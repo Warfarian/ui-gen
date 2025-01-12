@@ -2,7 +2,8 @@ import { useState } from 'react'
 import DOMPurify from 'dompurify'
 import CodeMirror from '@uiw/react-codemirror'
 import { html } from '@codemirror/lang-html'
-import parse from 'html-react-parser'
+import { EditorView } from '@codemirror/view'
+
 
 function App() {
   const [isListening, setIsListening] = useState(false);
@@ -153,20 +154,32 @@ function App() {
                         <div className="border rounded-lg p-4 bg-white mb-4">
                           <iframe
                             srcDoc={generatedHtml}
-                            className="w-full min-h-[600px] border-0"
+                            className="w-full min-h-[2000px] border-0"
                             title="Generated UI Preview"
-                            sandbox="allow-scripts"
+                            sandbox="allow-scripts allow-same-origin"
                           />
                         </div>
 
                         {showCode && (
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-hidden bg-white">
                             <CodeMirror
                               value={generatedHtml}
-                              height="200px"
-                              extensions={[html()]}
-                              theme="light"
+                              height="400px"
+                              width="100%"
+                              extensions={[
+                                html(),
+                                EditorView.theme({
+                                  "&": { height: "400px" },
+                                  ".cm-scroller": { overflow: "auto" },
+                                  ".cm-content": { 
+                                    fontFamily: "monospace",
+                                    fontSize: "14px"
+                                  },
+                                  ".cm-line": { padding: "0 8px" }
+                                })
+                              ]}
                               readOnly
+                              className="w-full border rounded"
                             />
                           </div>
                         )}

@@ -29,40 +29,7 @@ app.post('/create-design', async (req, res) => {
   try {
     console.log('Received request with text:', text);
 
-    // First, get AI response
-    const completion = await client.chat.completions.create({
-      temperature: 0,
-      model: "meta-llama/Llama-3.3-70B-Instruct",
-      messages: [
-        {
-          role: "system",
-          content: `You're a friendly and talented web designer collaborating with a project manager. Your task is to turn tree-structured JSON data describing a webpage layout into valid HTML with TailwindCSS. Keep the tone casual and conversational, like you're brainstorming with a teammate.
-
-                    Goals:
-
-                    Convert the JSON into HTML styled with TailwindCSS.
-                    Don't mention the JSON structure—just say things like, "Based on what you said..."
-                    Keep the page responsive and visually appealing.
-                    Follow the layout and sections in the JSON to ensure everything is accurately represented with proper HTML semantics.
-                    Add accessibility features (like aria-labels) when needed.
-                    Response Style:
-
-                    Talk like you're collaborating with a PM. Keep it concise but focused.
-                    Example: "Alright, here's what I've created for you. Let me know if you want any tweaks!" is more than enough. One or two lines. Do not have to go into detail about what you created.
-                    Avoid:
-
-                    Lengthy explanations about "how" or "why." Be clear about design choices when needed, but keep it short and to the point.`
-        },
-        {
-          role: "user",
-          content: text
-        }
-      ]
-    });
-
-    console.log('Received AI response:', completion.choices[0].message.content);
-
-    // Then call Magic Loops API
+    // First call Magic Loops API to get the structure
     const magicLoopsUrl = 'https://magicloops.dev/api/loop/72f6c668-b246-4d95-bd83-a8525aeddf01/run';
     console.log('Calling Magic Loops API...');
     
@@ -71,10 +38,7 @@ app.post('/create-design', async (req, res) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ 
-        command: text,
-        aiResponse: completion.choices[0].message.content 
-      })
+      body: JSON.stringify({ command: text })
     });
 
     if (!magicLoopsResponse.ok) {
@@ -83,11 +47,46 @@ app.post('/create-design', async (req, res) => {
 
     const responseJson = await magicLoopsResponse.json();
     console.log('Magic Loops API response:', responseJson);
-    
-    res.json({
-      ...responseJson,
-      aiResponse: completion.choices[0].message.content
+
+    // Then send the structure to LLaMA to generate HTML
+    console.log('Sending request to LLaMA...');
+    const completion = await client.chat.completions.create({
+      temperature: 0,
+      model: "meta-llama/Llama-3.3-70B-Instruct",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert web developer. Your task is to generate a complete HTML webpage with TailwindCSS styling based on the provided layout structure.
+
+          Requirements:
+          - Generate semantic HTML5 with proper accessibility attributes
+          - Use TailwindCSS classes for all styling
+          - Make the design fully responsive
+          - Include realistic content and images relevant to the website type
+          - Return ONLY the complete HTML code without any explanations
+          
+          The response should be valid HTML that can be directly rendered in a browser with TailwindCSS included.`
+        },
+        {
+          role: "user",
+          content: `Generate a complete HTML webpage for this layout structure: ${JSON.stringify(responseJson)}`
+        }
+      ]
     });
+
+    console.log('Received AI response:', {
+      content: completion.choices[0].message.content,
+      model: completion.model,
+      usage: completion.usage,
+      finishReason: completion.choices[0].finish_reason
+    });
+
+    // Send both the AI response and the generated HTML
+    res.json({
+      aiResponse: "I've generated the HTML based on your request. Let me know if you'd like any adjustments!",
+      html: completion.choices[0].message.content
+    });
+
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).json({ 
