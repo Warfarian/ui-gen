@@ -4,6 +4,9 @@ import OpenAI from 'openai';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
+// Image API endpoint
+const IMAGE_API_URL = 'https://magicloops.dev/api/loop/0e90271e-dd9d-4745-b253-a82ef4286126/run';
+
 const app = express();
 const port = 3001;
 dotenv.config();
@@ -15,6 +18,36 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+
+// Route to handle image generation
+app.post('/get-image', async (req, res) => {
+  const { keywords } = req.body;
+  
+  try {
+    console.log('Requesting image for keywords:', keywords);
+    const response = await fetch(IMAGE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ prompt: keywords })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Image API responded with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Image API response:', data);
+    res.json(data);
+  } catch (error) {
+    console.error('Error getting image:', error);
+    res.status(500).json({ 
+      error: 'Failed to get image',
+      details: error.message 
+    });
+  }
+});
 
 // Initialize OpenAI client
 const client = new OpenAI({
@@ -63,6 +96,26 @@ app.post('/create-design', async (req, res) => {
           role: "user",
           content: `As an expert web designer, create a modern, visually striking webpage based on this description: "${text}".
 
+          Image Requirements:
+          - Include ONE hero image at the top of the page
+          - Place a detailed image description in a special comment tag:
+          <!-- GENERATE_IMAGE: A modern office space with floor-to-ceiling windows, natural light streaming in, minimalist furniture -->
+          - Make the description vivid and specific for better image generation
+          - Include mood, style, and important details in the description
+          - Place the comment right before the hero section
+          - Follow the comment with an img tag that has appropriate classes and alt text
+          
+          Image Generation:
+          - Use <!-- GENERATE_IMAGE: [description] --> comments to request AI-generated images
+          - Make image descriptions detailed and specific
+          - Request multiple images if needed for different sections
+          - Each GENERATE_IMAGE comment will trigger a unique image generation
+          - Follow each comment with an img tag using IMAGE_URL_PLACEHOLDER as src
+          
+          Example:
+          <!-- GENERATE_IMAGE: A luxurious modern office with panoramic city views, sleek furniture, warm lighting -->
+          <img src="IMAGE_URL_PLACEHOLDER" alt="Modern office space" class="hero-image w-full">
+
           Key Requirements:
 
           Content & Copy:
@@ -74,7 +127,7 @@ app.post('/create-design', async (req, res) => {
           Visual Design:
           - Create a clean, professional layout with proper visual hierarchy
           - Use a cohesive, modern color scheme (specify exact colors)
-          - Include appropriate high-quality images from Unsplash
+          - Include appropriate high-quality images by describing what should be generated
           - Add subtle animations and hover effects for interactivity
           - Implement modern design patterns (cards, gradients, shadows, etc.)
           
@@ -98,7 +151,12 @@ app.post('/create-design', async (req, res) => {
           - Make the design unique and memorable
           - Include comments explaining key design decisions
           
-          Return only the raw HTML with embedded styles. No markdown or code blocks.`
+          Return only the raw HTML with embedded styles. No markdown or code blocks.
+          
+          Example image usage:
+          <!-- GENERATE_IMAGE: A stunning modern workspace with natural light -->
+          <img src="IMAGE_URL_PLACEHOLDER" alt="Hero workspace" class="w-full h-[400px] object-cover rounded-lg shadow-lg">
+          `
         }
       ]
     });
@@ -110,13 +168,90 @@ app.post('/create-design', async (req, res) => {
       finishReason: completion.choices[0].finish_reason
     });
 
-    // Get the raw HTML from LLaMA and wrap it with necessary tags
-    const rawHtml = completion.choices[0].message.content.replace(/```html|```/g, '').trim();
+    // Get the raw HTML from LLaMA
+    let html = completion.choices[0].message.content.replace(/```html|```/g, '').trim();
 
-    // Send both the AI response and the HTML with design context
+    // Helper function to extract just the URL from the response data
+    const extractImageUrl = (response) => {
+      try {
+        if (typeof response === 'string') {
+          const jsonMatch = response.match(/\{.*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.data?.[0]?.url) {
+              return parsed.data[0].url;
+            }
+          }
+        }
+        if (response.data?.[0]?.url) return response.data[0].url;
+        if (response.imageUrl) return response.imageUrl;
+      } catch (error) {
+        console.error('Error extracting image URL:', error);
+      }
+      return 'https://via.placeholder.com/800x600?text=Image+Generation+Failed';
+    };
+
+    // Find all image generation requests
+    const imageRegex = /<!-- GENERATE_IMAGE: (.*?) -->/g;
+    const imagePromises = new Map();
+    const imagePlaceholders = [];
+    let match;
+
+    while ((match = imageRegex.exec(html)) !== null) {
+      const imageDescription = match[1];
+      imagePlaceholders.push(match[0]);
+      
+      // Only generate new image if we haven't generated one for this exact description
+      if (!imagePromises.has(imageDescription)) {
+        imagePromises.set(
+          imageDescription,
+          fetch('http://localhost:3001/get-image', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ keywords: imageDescription })
+          }).then(res => res.json())
+        );
+      }
+    }
+
+    // Wait for all unique images to be generated
+    const uniqueImageResults = new Map();
+    for (const [desc, promise] of imagePromises) {
+      const result = await promise;
+      uniqueImageResults.set(desc, result.imageUrl || 'https://via.placeholder.com/800x600?text=Image+Generation+Failed');
+    }
+
+    // Replace all placeholders with generated image URLs
+    for (const placeholder of imagePlaceholders) {
+      const desc = placeholder.match(/<!-- GENERATE_IMAGE: (.*?) -->/)[1];
+      const imageUrl = uniqueImageResults.get(desc);
+      const extractedUrl = extractImageUrl(imageUrl);
+      
+      html = html.replace(placeholder, ''); // Remove the comment
+      html = html.replace(/(<img[^>]*src=")IMAGE_URL_PLACEHOLDER("[^>]*)(>)/, 
+        (match, start, middle, end) => {
+          // Add size classes based on the context
+          if (match.includes('hero-image')) {
+            return `${start}${extractedUrl}${middle} class="w-full h-[400px] object-cover rounded-lg shadow-lg"${end}`;
+          } else if (match.includes('image-small')) {
+            return `${start}${extractedUrl}${middle} class="w-full h-[200px] object-cover rounded-lg shadow-sm"${end}`;
+          } else {
+            return `${start}${extractedUrl}${middle} class="w-full h-[300px] object-cover rounded-lg shadow-md"${end}`;
+          }
+        }
+      );
+    }
+
+    // Get the first generated image URL for the preview for the preview
+    const firstImageUrl = extractImageUrl(Array.from(uniqueImageResults.values())[0]);
+
+    // Send the response with generated images
     res.json({
       aiResponse: "I've created a custom design based on your request. I used a modern, professional style with real content and proper visual hierarchy. Feel free to ask for specific adjustments to the layout, colors, content, or any other aspect!",
-      html: rawHtml,
+      html: html,
+      imageUrl: firstImageUrl, // Add the image URL directly to the response
       designChoices: {
         layout: completion.choices[0].message.content.match(/<!-- Layout: (.*?) -->/)?.[1] || '',
         colors: completion.choices[0].message.content.match(/<!-- Colors: (.*?) -->/)?.[1] || '',

@@ -60,6 +60,10 @@ function App() {
       setMessages(prev => [...prev, { type: 'bot', text: data.aiResponse || 'Here is your design:' }]);
       
       if (data.html) {
+        // Extract the first image URL from the HTML content
+        const imageUrlMatch = data.html.match(/<img[^>]*src="([^"]*)"[^>]*>/);
+        const imageUrl = imageUrlMatch ? imageUrlMatch[1] : null;
+        
         // Add default styles and Tailwind CDN to the HTML content
         const htmlWithStyles = `
           <!DOCTYPE html>
@@ -68,6 +72,7 @@ function App() {
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
               <script src="https://cdn.tailwindcss.com"></script>
+              <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
               <style>
                 body {
                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
