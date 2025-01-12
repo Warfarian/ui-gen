@@ -2,8 +2,7 @@ import { useState } from 'react'
 import DOMPurify from 'dompurify'
 import CodeMirror from '@uiw/react-codemirror'
 import { html } from '@codemirror/lang-html'
-import { EditorView } from '@codemirror/view'
-
+import { basicSetup } from '@uiw/codemirror-extensions-basic-setup'
 
 function App() {
   const [isListening, setIsListening] = useState(false);
@@ -58,10 +57,50 @@ function App() {
       const data = await response.json();
       console.log('Received response:', data);
       setDesign(data);
-      setMessages(prev => [...prev, { type: 'bot', text: 'Here is your design:' }]);
+      setMessages(prev => [...prev, { type: 'bot', text: data.aiResponse || 'Here is your design:' }]);
       
       if (data.html) {
-        const sanitizedHtml = DOMPurify.sanitize(data.html);
+        // Add default styles and Tailwind CDN to the HTML content
+        const htmlWithStyles = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <script src="https://cdn.tailwindcss.com"></script>
+              <style>
+                body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                  line-height: 1.5;
+                  padding: 2rem;
+                  max-width: 1200px;
+                  margin: 0 auto;
+                  background-color: #f8fafc;
+                }
+                .ai-response {
+                  background: linear-gradient(to right, #e0f2fe, #f0f9ff);
+                  border-left: 4px solid #0ea5e9;
+                  padding: 1.5rem;
+                  border-radius: 0.5rem;
+                  margin-bottom: 2rem;
+                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                }
+                .ai-label {
+                  color: #0369a1;
+                  font-weight: 500;
+                  font-size: 0.875rem;
+                  text-transform: uppercase;
+                  letter-spacing: 0.05em;
+                  margin-bottom: 0.5rem;
+                }
+              </style>
+            </head>
+            <body>
+              ${data.html}
+            </body>
+          </html>
+        `;
+        const sanitizedHtml = DOMPurify.sanitize(htmlWithStyles);
         setGeneratedHtml(sanitizedHtml);
       }
     } catch (error) {
@@ -140,22 +179,13 @@ function App() {
               </button>
             </div>
             
-            <div className="border rounded-lg p-4 bg-white mb-4">                <iframe
-                  srcDoc={generatedHtml}
-                  className="w-full min-h-[800px] border-0"
-                  title="Generated UI Preview"
-                  sandbox="allow-scripts allow-same-origin allow-modals"
-                  onLoad={(e) => {
-                    // Ensure iframe content is fully loaded
-                    const iframe = e.target;
-                    if (iframe.contentDocument) {
-                      // Force a repaint to ensure styles are applied
-                      iframe.style.display = 'none';
-                      iframe.offsetHeight; // Force reflow
-                      iframe.style.display = 'block';
-                    }
-                  }}
-                />
+            <div className="border rounded-lg p-4 bg-white mb-4">
+              <iframe
+                srcDoc={generatedHtml}
+                className="w-full min-h-[800px] border-0"
+                title="Generated UI Preview"
+                sandbox="allow-scripts allow-same-origin"
+              />
             </div>
 
             {showCode && (
@@ -163,21 +193,10 @@ function App() {
                 <CodeMirror
                   value={generatedHtml}
                   height="400px"
-                  width="100%"
-                  extensions={[
-                    html(),
-                    EditorView.theme({
-                      "&": { height: "400px" },
-                      ".cm-scroller": { overflow: "auto" },
-                      ".cm-content": { 
-                        fontFamily: "monospace",
-                        fontSize: "14px"
-                      },
-                      ".cm-line": { padding: "0 8px" }
-                    })
-                  ]}
+                  extensions={[html(), basicSetup()]}
                   readOnly
-                  className="w-full border rounded"
+                  className="w-full border rounded code-mirror-custom"
+                  theme="dark"
                 />
               </div>
             )}

@@ -29,26 +29,7 @@ app.post('/create-design', async (req, res) => {
   try {
     console.log('Received request with text:', text);
 
-    // First call Magic Loops API to get the structure
-    const magicLoopsUrl = 'https://magicloops.dev/api/loop/72f6c668-b246-4d95-bd83-a8525aeddf01/run';
-    console.log('Calling Magic Loops API...');
-    
-    const magicLoopsResponse = await fetch(magicLoopsUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ command: text })
-    });
-
-    if (!magicLoopsResponse.ok) {
-      throw new Error(`Magic Loops API responded with status: ${magicLoopsResponse.status}`);
-    }
-
-    const responseJson = await magicLoopsResponse.json();
-    console.log('Magic Loops API response:', responseJson);
-
-    // Then send the structure to LLaMA to generate HTML
+    // Send request directly to LLaMA
     console.log('Sending request to LLaMA...');
     const completion = await client.chat.completions.create({
       temperature: 0,
@@ -56,44 +37,68 @@ app.post('/create-design', async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an expert web developer, designer, and content creator specializing in TailwindCSS. Your task is to generate a complete HTML webpage with extensive TailwindCSS styling and engaging, relevant content based on the provided layout structure.
+          content: `You are a skilled web designer and developer with expertise in HTML, CSS, and content creation. Your role is to interpret user-provided input or tree-structured JSON data describing a webpage layout and turn it into a fully functional, engaging HTML page styled with custom CSS. Your approach should be casual, friendly, and collaborative, as if brainstorming ideas with a project manager.
 
-          Content Creation Rules:
-          - Generate REAL, specific content related to the website type (no lorem ipsum or placeholders)
-          - Create unique, engaging headlines that match the business type
-          - Write detailed, realistic descriptions and paragraphs
-          - Use industry-appropriate terminology and tone
-          - Include specific calls-to-action relevant to the business
-          - Generate realistic business details (address, hours, contact info)
+          Goals:
+          
+          Generate Real Content:
+          Use meaningful, specific, and engaging content tailored to the website's theme.
+          Replace placeholders with realistic details (headlines, descriptions, business information, and image links from unsplash.com).
 
-          Styling Requirements:
-          - Use comprehensive TailwindCSS classes for ALL styling - no inline styles or CSS
-          - Include hover effects, transitions, and animations using Tailwind classes
-          - Use Tailwind's color palette effectively (primary colors, shades, etc.)
-          - Implement proper spacing using Tailwind's padding/margin utilities
-          - Use Tailwind's flexbox and grid classes for layouts
-          - Include responsive design using Tailwind's breakpoint prefixes (sm:, md:, lg:, xl:)
-          - Add shadows, rounded corners, and other visual effects using Tailwind
-          - Use Tailwind's typography classes for text styling
-          
-          Content Requirements:
-          - Generate semantic HTML5 with proper accessibility attributes
-          - Create realistic, engaging content relevant to the website type
-          - Use compelling headlines, descriptions, and calls-to-action
-          - Include high-quality images from unsplash.com relevant to the content
-          - Ensure proper contrast ratios for accessibility
-          
-          Important:
-          - Every element must have appropriate Tailwind classes
-          - Use modern design patterns (cards, gradients, overlays, etc.)
-          - Include interactive elements with hover/focus states
-          - Ensure smooth transitions between responsive breakpoints
-          - Return only raw HTML without any markdown or code blocks`
+          Stylish, Modern Design:
+          Write CSS within a <style> tag in the <head> section of the HTML file.
+          Use modern CSS techniques (e.g., flexbox, grid, custom properties, gradients, animations).
+          Implement engaging visual effects like glassmorphism, hover animations, and smooth transitions.
+          Maintain responsive design using media queries.
+
+          Accessibility & Usability:
+          Use semantic HTML5 elements and proper accessibility attributes (e.g., aria-labels, alt text).
+          Ensure sufficient contrast ratios and keyboard navigation support.
+
+          User Collaboration:
+          Present design choices conversationally and iteratively (e.g., "I’ve added a bold header and a gradient background—let me know what you think!")
+          Only make incremental changes based on user feedback without starting from scratch.`
         },
         {
           role: "user",
-          content: `Generate a complete HTML webpage for this layout structure: ${JSON.stringify(responseJson)}. 
-          Do not include any markdown code blocks or backticks in your response. Return only the raw HTML.`
+          content: `As an expert web designer, create a modern, visually striking webpage based on this description: "${text}".
+
+          Key Requirements:
+
+          Content & Copy:
+          - Generate REAL, relevant content (no Lorem Ipsum)
+          - Write compelling headlines and copy that match the business/purpose
+          - Include realistic business details, prices, features, or testimonials as appropriate
+          - Use engaging calls-to-action
+          
+          Visual Design:
+          - Create a clean, professional layout with proper visual hierarchy
+          - Use a cohesive, modern color scheme (specify exact colors)
+          - Include appropriate high-quality images from Unsplash
+          - Add subtle animations and hover effects for interactivity
+          - Implement modern design patterns (cards, gradients, shadows, etc.)
+          
+          Technical Implementation:
+          - Use semantic HTML5 elements (<header>, <nav>, <main>, etc.)
+          - Implement responsive design using Tailwind CSS
+          - Ensure accessibility (ARIA labels, proper contrast, semantic structure)
+          - Add smooth transitions and micro-interactions
+          - Include Font Awesome icons where appropriate
+          
+          Additional Features:
+          - Add a sticky navigation header
+          - Include hover states for interactive elements
+          - Implement proper spacing and padding
+          - Use modern typography with proper font hierarchy
+          - Add subtle background patterns or gradients
+          
+          Important Notes:
+          - Focus on creating a cohesive, professional design
+          - Ensure all content is relevant to the page purpose
+          - Make the design unique and memorable
+          - Include comments explaining key design decisions
+          
+          Return only the raw HTML with embedded styles. No markdown or code blocks.`
         }
       ]
     });
@@ -107,45 +112,16 @@ app.post('/create-design', async (req, res) => {
 
     // Get the raw HTML from LLaMA and wrap it with necessary tags
     const rawHtml = completion.choices[0].message.content.replace(/```html|```/g, '').trim();
-    
-    // Wrap the HTML with proper doctype and Tailwind CSS with configuration
-    const wrappedHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generated Website</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              primary: '#3b82f6',
-              secondary: '#64748b',
-            },
-          },
-        },
-      }
-    </script>
-    <style type="text/tailwindcss">
-      @layer utilities {
-        .text-shadow {
-          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-        }
-      }
-    </style>
-</head>
-<body>
-    ${rawHtml}
-</body>
-</html>`;
 
-    // Send both the AI response and the wrapped HTML
+    // Send both the AI response and the HTML with design context
     res.json({
-      aiResponse: "I've generated the HTML based on your request. Let me know if you'd like any adjustments!",
-      html: wrappedHtml
+      aiResponse: "I've created a custom design based on your request. I used a modern, professional style with real content and proper visual hierarchy. Feel free to ask for specific adjustments to the layout, colors, content, or any other aspect!",
+      html: rawHtml,
+      designChoices: {
+        layout: completion.choices[0].message.content.match(/<!-- Layout: (.*?) -->/)?.[1] || '',
+        colors: completion.choices[0].message.content.match(/<!-- Colors: (.*?) -->/)?.[1] || '',
+        features: completion.choices[0].message.content.match(/<!-- Features: (.*?) -->/)?.[1] || ''
+      }
     });
 
   } catch (error) {
@@ -179,6 +155,5 @@ process.on('SIGTERM', () => {
   server.close(() => {
     console.log('Server closed');
     process.exit(0);
-    
   });
 });
