@@ -1,11 +1,16 @@
 import { useState } from 'react'
+import DOMPurify from 'dompurify'
+import CodeMirror from '@uiw/react-codemirror'
+import { html } from '@codemirror/lang-html'
+import parse from 'html-react-parser'
 
 function App() {
   const [isListening, setIsListening] = useState(false);
   const [design, setDesign] = useState(null);
   const [generatedHtml, setGeneratedHtml] = useState(null);
-  const [messages, setMessages] = useState([]); // Store chat messages
-  const [isLoading, setIsLoading] = useState(false); // Add loading state
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   const startListening = () => {
     if ('webkitSpeechRecognition' in window) {
@@ -19,7 +24,6 @@ function App() {
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        // Add user message to chat
         setMessages(prev => [...prev, { type: 'user', text: transcript }]);
         sendToBackend(transcript);
       };
@@ -35,30 +39,45 @@ function App() {
   };
 
   const sendToBackend = async (text) => {
-    setIsLoading(true); // Start loading
+    setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/create-design', {
+      console.log('Sending request to server...');
+      const response = await fetch('http://localhost:3001/create-design', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ text }),
       });
-      const data = await response.json();
-      setDesign(data);
       
-      // Add bot response to chat
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Received response:', data);
+      setDesign(data);
       setMessages(prev => [...prev, { type: 'bot', text: 'Here is your design:' }]);
       
-      // Set the generated HTML in a div to render it
       if (data.html) {
-        setGeneratedHtml(data.html);
+        const sanitizedHtml = DOMPurify.sanitize(data.html);
+        setGeneratedHtml(sanitizedHtml);
       }
     } catch (error) {
       console.error('Error sending data to backend:', error);
-      setMessages(prev => [...prev, { type: 'bot', text: 'Sorry, there was an error processing your request.' }]);
+      let errorMessage;
+      
+      if (!navigator.onLine) {
+        errorMessage = 'You appear to be offline. Please check your internet connection.';
+      } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        errorMessage = 'Unable to connect to the server. Please make sure the server is running.';
+      } else {
+        errorMessage = error.response?.data?.details || error.message || 'Sorry, there was an error processing your request.';
+      }
+      
+      setMessages(prev => [...prev, { type: 'bot', text: errorMessage }]);
     } finally {
-      setIsLoading(false); // Stop loading regardless of success/failure
+      setIsLoading(false);
     }
   };
 
@@ -71,7 +90,6 @@ function App() {
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
                 <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">UI Generator</h1>
                 
-                {/* Chat Messages */}
                 <div className="mb-6 space-y-4">
                   {messages.map((message, index) => (
                     <div 
@@ -119,26 +137,42 @@ function App() {
                         </p>
                       </div>
                     </div>
-                    
-                    <div className="mt-8">
-                      <h2 className="text-xl font-semibold mb-4">Generated Design:</h2>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <pre className="whitespace-pre-wrap text-sm">
-                          {JSON.stringify(design, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  </>
-                )}
 
-                {generatedHtml && (
-                  <div className="mt-8">
-                    <h2 className="text-xl font-semibold mb-4">Generated HTML Preview:</h2>
-                    <div 
-                      className="border rounded-lg p-4"
-                      dangerouslySetInnerHTML={{ __html: generatedHtml }}
-                    />
-                  </div>
+                    {generatedHtml && (
+                      <div className="mt-8">
+                        <div className="flex justify-between items-center mb-4">
+                          <h2 className="text-xl font-semibold">Design Preview:</h2>
+                          <button
+                            onClick={() => setShowCode(!showCode)}
+                            className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                          >
+                            {showCode ? 'Hide Code' : 'View Code'}
+                          </button>
+                        </div>
+                        
+                        <div className="border rounded-lg p-4 bg-white mb-4">
+                          <iframe
+                            srcDoc={generatedHtml}
+                            className="w-full min-h-[600px] border-0"
+                            title="Generated UI Preview"
+                            sandbox="allow-scripts"
+                          />
+                        </div>
+
+                        {showCode && (
+                          <div className="border rounded-lg overflow-hidden">
+                            <CodeMirror
+                              value={generatedHtml}
+                              height="200px"
+                              extensions={[html()]}
+                              theme="light"
+                              readOnly
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
