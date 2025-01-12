@@ -11,6 +11,15 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [textInput, setTextInput] = useState('');
+
+  const handleTextSubmit = async () => {
+    if (!textInput.trim() || isLoading) return;
+    
+    setMessages(prev => [...prev, { type: 'user', text: textInput }]);
+    await sendToBackend(textInput);
+    setTextInput('');
+  };
 
   const startListening = () => {
     if ('webkitSpeechRecognition' in window) {
@@ -147,7 +156,33 @@ function App() {
           ))}
         </div>
 
-        <div className="relative mt-auto">
+        <div className="relative mt-auto space-y-4">
+          {/* Text Input */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isLoading) {
+                  e.preventDefault();
+                  handleTextSubmit();
+                }
+              }}
+              placeholder="Type your website description..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading || isListening}
+            />
+            <button
+              onClick={handleTextSubmit}
+              disabled={isLoading || isListening || !textInput.trim()}
+              className="px-4 py-2 text-white bg-green-500 hover:bg-green-600 rounded-lg font-semibold transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              Send
+            </button>
+          </div>
+
+          {/* Voice Input Button */}
           <button
             onClick={startListening}
             disabled={isLoading}

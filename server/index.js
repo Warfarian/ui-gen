@@ -234,11 +234,11 @@ app.post('/create-design', async (req, res) => {
         (match, start, middle, end) => {
           // Add size classes based on the context
           if (match.includes('hero-image')) {
-            return `${start}${extractedUrl}${middle} class="w-full h-[400px] object-cover rounded-lg shadow-lg"${end}`;
+            return `${start}${extractedUrl}${middle} class="w-full h-[250px] object-cover rounded-lg shadow-lg"${end}`;
           } else if (match.includes('image-small')) {
-            return `${start}${extractedUrl}${middle} class="w-full h-[200px] object-cover rounded-lg shadow-sm"${end}`;
+            return `${start}${extractedUrl}${middle} class="w-full h-[150px] object-cover rounded-lg shadow-sm"${end}`;
           } else {
-            return `${start}${extractedUrl}${middle} class="w-full h-[300px] object-cover rounded-lg shadow-md"${end}`;
+            return `${start}${extractedUrl}${middle} class="w-full h-[200px] object-cover rounded-lg shadow-md"${end}`;
           }
         }
       );
