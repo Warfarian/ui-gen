@@ -1,5 +1,0 @@
-Okay cool, You dont have to give back the "Generated Design" tree, that is only for feeding into the llama ai. 
-
-Workflow is like this: user input -> send to the magic loops api -> receive the tree -> send that into the llama ai -> llama will give the code by using the parse tree while also using its prompt which I have already defined in the index.js file -> The code will be viewable if users click the view code button, but the design has to be visible (ie) render the html css to show the final design.
-
-We need to render the html and css in the same window, and show the user the design.
