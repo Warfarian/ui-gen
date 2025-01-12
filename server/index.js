@@ -95,9 +95,59 @@ app.post('/create-design', async (req, res) => {
         {
           role: "user",
           content: `As an expert web designer, create a modern, visually striking webpage based on this description: "${text}".
+          
+          Template Information:
+          Name: ${req.body.template.name}
+          Category: ${req.body.template.id}
+          Required Sections: ${req.body.template.defaultContent.sections.join(', ')}
+          Color Scheme: ${req.body.template.defaultContent.style.colors.join(', ')}
+          Font Stack: ${req.body.template.defaultContent.style.fonts.join(', ')}
+          
+          Template Guidelines:
+          1. Structure:
+             - Implement ALL required sections in the specified order
+             - Each section must be clearly defined with semantic HTML5 elements
+             - Maintain consistent spacing and padding between sections
+          
+          2. Styling:
+             - Use ONLY the provided color scheme (primary: ${req.body.template.defaultContent.style.colors[0]}, accent: ${req.body.template.defaultContent.style.colors[1]}, background: ${req.body.template.defaultContent.style.colors[2]})
+             - Apply the specified font stack for typography
+             - Ensure consistent styling patterns throughout the page
+          
+          3. Image Generation:
+             - Base the image style on: ${req.body.template.imagePrompt}
+             - Maintain visual consistency with the template's theme
+             - Ensure image style matches the overall design aesthetic
+          
+          4. Content Structure per Template Type:
+          ${req.body.template.id === 'modern-landing' ? `
+             - Hero: Bold headline with clear value proposition
+             - Features: Grid or card-based layout highlighting key points
+             - About: Company/product story with engaging visuals
+             - CTA: Clear, compelling call-to-action button` : ''}
+          ${req.body.template.id === 'business' ? `
+             - Hero: Professional headline with business overview
+             - Services: Detailed service cards with icons
+             - Team: Team member profiles with roles
+             - Testimonials: Client feedback in card format
+             - Contact: Professional contact form with business hours` : ''}
+          ${req.body.template.id === 'portfolio' ? `
+             - Hero: Creative introduction with personal brand
+             - Projects: Gallery-style project showcase
+             - About: Personal bio with skills
+             - Skills: Visual representation of expertise
+             - Contact: Friendly contact options` : ''}
+          ${req.body.template.id === 'blog' ? `
+             - Hero: Blog title with featured post
+             - Featured Posts: Latest articles in grid layout
+             - Categories: Clear category navigation
+             - Newsletter: Email signup with value proposition` : ''}
+          
+          Please ensure the generated design strictly follows these template guidelines while incorporating the user's specific requirements and content needs.
 
           Image Requirements:
-          - Include ONE hero image at the top of the page
+          - Generate images that match the template's style and mood
+          - Hero image prompt should incorporate: ${req.body.template.imagePrompt}
           - Place a detailed image description in a special comment tag:
           <!-- GENERATE_IMAGE: A modern office space with floor-to-ceiling windows, natural light streaming in, minimalist furniture -->
           - Make the description vivid and specific for better image generation

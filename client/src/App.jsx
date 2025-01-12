@@ -3,10 +3,12 @@ import DOMPurify from 'dompurify'
 import CodeMirror from '@uiw/react-codemirror'
 import { html } from '@codemirror/lang-html'
 import { basicSetup } from '@uiw/codemirror-extensions-basic-setup'
+import TemplateSelector from './components/TemplateSelector'
 
 function App() {
   const [isListening, setIsListening] = useState(false);
   const [design, setDesign] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [generatedHtml, setGeneratedHtml] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +50,13 @@ function App() {
   };
 
   const sendToBackend = async (text) => {
+    if (!selectedTemplate) {
+      setMessages(prev => [...prev, { 
+        type: 'bot', 
+        text: 'Please select a template first before generating a design.' 
+      }]);
+      return;
+    }
     setIsLoading(true);
     try {
       console.log('Sending request to server...');
@@ -56,7 +65,10 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ 
+          text,
+          template: selectedTemplate
+        }),
       });
       
       if (!response.ok) {
@@ -140,6 +152,15 @@ function App() {
       {/* Left side - Chat */}
       <div className="w-1/3 p-6 border-r border-gray-200 bg-white overflow-y-auto">
         <h1 className="text-2xl font-bold text-center mb-8 text-gray-900">UI Generator</h1>
+        
+        {/* Template Selector */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Choose a Template</h2>
+          <TemplateSelector 
+            onSelect={setSelectedTemplate}
+            selectedTemplate={selectedTemplate}
+          />
+        </div>
         
         <div className="mb-6 space-y-4">
           {messages.map((message, index) => (
