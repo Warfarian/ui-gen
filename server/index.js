@@ -56,20 +56,27 @@ app.post('/create-design', async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an expert web developer. Your task is to generate a complete HTML webpage with TailwindCSS styling based on the provided layout structure.
+          content: `You are an expert web developer and content creator. Your task is to generate a complete HTML webpage with TailwindCSS styling based on the provided layout structure.
 
           Requirements:
           - Generate semantic HTML5 with proper accessibility attributes
-          - Use TailwindCSS classes for all styling
+          - Use TailwindCSS classes for all styling (be specific with classes, don't use @apply)
           - Make the design fully responsive
-          - Include realistic content and images relevant to the website type
-          - Return ONLY the complete HTML code without any explanations
+          - Generate realistic, engaging content relevant to the website type
+          - Create compelling headlines, descriptions, and calls-to-action
+          - Use high-quality images from unsplash.com relevant to the content
+          - Return ONLY the complete HTML code without any explanations or placeholders
           
-          The response should be valid HTML that can be directly rendered in a browser with TailwindCSS included.`
+          Important:
+          - Replace all placeholder text (like 'movie title' or 'description here') with realistic, engaging content
+          - Use creative, natural language for all text content
+          - Ensure all content matches the website theme from the layout structure
+          - Make sure TailwindCSS classes are comprehensive for styling`
         },
         {
           role: "user",
-          content: `Generate a complete HTML webpage for this layout structure: ${JSON.stringify(responseJson)}`
+          content: `Generate a complete HTML webpage for this layout structure: ${JSON.stringify(responseJson)}. 
+          Do not include any markdown code blocks or backticks in your response. Return only the raw HTML.`
         }
       ]
     });
@@ -81,10 +88,28 @@ app.post('/create-design', async (req, res) => {
       finishReason: completion.choices[0].finish_reason
     });
 
-    // Send both the AI response and the generated HTML
+    // Get the raw HTML from LLaMA and wrap it with necessary tags
+    const rawHtml = completion.choices[0].message.content.replace(/```html|```/g, '').trim();
+    
+    // Wrap the HTML with proper doctype and Tailwind CSS
+    const wrappedHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Website</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    ${rawHtml}
+</body>
+</html>`;
+
+    // Send both the AI response and the wrapped HTML
     res.json({
       aiResponse: "I've generated the HTML based on your request. Let me know if you'd like any adjustments!",
-      html: completion.choices[0].message.content
+      html: wrappedHtml
     });
 
   } catch (error) {

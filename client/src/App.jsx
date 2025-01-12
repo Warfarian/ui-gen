@@ -83,114 +83,97 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
-      <div className="relative py-3 sm:max-w-xl sm:mx-auto">
-        <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
-          <div className="max-w-md mx-auto">
-            <div className="divide-y divide-gray-200">
-              <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
-                <h1 className="text-3xl font-bold text-center mb-8 text-gray-900">UI Generator</h1>
-                
-                <div className="mb-6 space-y-4">
-                  {messages.map((message, index) => (
-                    <div 
-                      key={index}
-                      className={`p-3 rounded-lg ${
-                        message.type === 'user' 
-                          ? 'bg-blue-100 ml-auto max-w-[80%]' 
-                          : 'bg-gray-100 mr-auto max-w-[80%]'
-                      }`}
-                    >
-                      <p className="text-sm">{message.text}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="relative">
-                  <button
-                    onClick={startListening}
-                    disabled={isLoading}
-                    className={`w-full py-3 px-6 text-white rounded-lg text-lg font-semibold transition-all
-                      ${isListening 
-                        ? 'bg-red-500 hover:bg-red-600' 
-                        : isLoading
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-blue-500 hover:bg-blue-600'
-                      }`}
-                  >
-                    {isListening ? 'Listening...' : isLoading ? 'Generating...' : 'Start Voice Input'}
-                  </button>
-                  
-                  {isLoading && (
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                    </div>
-                  )}
-                </div>
-
-                {design && (
-                  <>
-                    <div className="mt-8">
-                      <h2 className="text-xl font-semibold mb-4">AI Response:</h2>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-sm whitespace-pre-wrap">
-                          {design.aiResponse}
-                        </p>
-                      </div>
-                    </div>
-
-                    {generatedHtml && (
-                      <div className="mt-8">
-                        <div className="flex justify-between items-center mb-4">
-                          <h2 className="text-xl font-semibold">Design Preview:</h2>
-                          <button
-                            onClick={() => setShowCode(!showCode)}
-                            className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
-                          >
-                            {showCode ? 'Hide Code' : 'View Code'}
-                          </button>
-                        </div>
-                        
-                        <div className="border rounded-lg p-4 bg-white mb-4">
-                          <iframe
-                            srcDoc={generatedHtml}
-                            className="w-full min-h-[2000px] border-0"
-                            title="Generated UI Preview"
-                            sandbox="allow-scripts allow-same-origin"
-                          />
-                        </div>
-
-                        {showCode && (
-                          <div className="border rounded-lg overflow-hidden bg-white">
-                            <CodeMirror
-                              value={generatedHtml}
-                              height="400px"
-                              width="100%"
-                              extensions={[
-                                html(),
-                                EditorView.theme({
-                                  "&": { height: "400px" },
-                                  ".cm-scroller": { overflow: "auto" },
-                                  ".cm-content": { 
-                                    fontFamily: "monospace",
-                                    fontSize: "14px"
-                                  },
-                                  ".cm-line": { padding: "0 8px" }
-                                })
-                              ]}
-                              readOnly
-                              className="w-full border rounded"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+    <div className="min-h-screen bg-gray-100 flex">
+      {/* Left side - Chat */}
+      <div className="w-1/3 p-6 border-r border-gray-200 bg-white overflow-y-auto">
+        <h1 className="text-2xl font-bold text-center mb-8 text-gray-900">UI Generator</h1>
+        
+        <div className="mb-6 space-y-4">
+          {messages.map((message, index) => (
+            <div 
+              key={index}
+              className={`p-3 rounded-lg ${
+                message.type === 'user' 
+                  ? 'bg-blue-100 ml-auto max-w-[80%]' 
+                  : 'bg-gray-100 mr-auto max-w-[80%]'
+              }`}
+            >
+              <p className="text-sm">{message.text}</p>
             </div>
-          </div>
+          ))}
         </div>
+
+        <div className="relative mt-auto">
+          <button
+            onClick={startListening}
+            disabled={isLoading}
+            className={`w-full py-3 px-6 text-white rounded-lg text-lg font-semibold transition-all
+              ${isListening 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : isLoading
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+          >
+            {isListening ? 'Listening...' : isLoading ? 'Generating...' : 'Start Voice Input'}
+          </button>
+          
+          {isLoading && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right side - Preview */}
+      <div className="w-2/3 p-6 bg-gray-50 overflow-y-auto">
+        {design && (
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Design Preview:</h2>
+              <button
+                onClick={() => setShowCode(!showCode)}
+                className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+              >
+                {showCode ? 'Hide Code' : 'View Code'}
+              </button>
+            </div>
+            
+            <div className="border rounded-lg p-4 bg-white mb-4">
+              <iframe
+                srcDoc={generatedHtml}
+                className="w-full min-h-[800px] border-0"
+                title="Generated UI Preview"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </div>
+
+            {showCode && (
+              <div className="border rounded-lg overflow-hidden bg-white">
+                <CodeMirror
+                  value={generatedHtml}
+                  height="400px"
+                  width="100%"
+                  extensions={[
+                    html(),
+                    EditorView.theme({
+                      "&": { height: "400px" },
+                      ".cm-scroller": { overflow: "auto" },
+                      ".cm-content": { 
+                        fontFamily: "monospace",
+                        fontSize: "14px"
+                      },
+                      ".cm-line": { padding: "0 8px" }
+                    })
+                  ]}
+                  readOnly
+                  className="w-full border rounded"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
