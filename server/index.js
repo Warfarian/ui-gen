@@ -56,22 +56,39 @@ app.post('/create-design', async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are an expert web developer and content creator. Your task is to generate a complete HTML webpage with TailwindCSS styling based on the provided layout structure.
+          content: `You are an expert web developer, designer, and content creator specializing in TailwindCSS. Your task is to generate a complete HTML webpage with extensive TailwindCSS styling and engaging, relevant content based on the provided layout structure.
 
-          Requirements:
+          Content Creation Rules:
+          - Generate REAL, specific content related to the website type (no lorem ipsum or placeholders)
+          - Create unique, engaging headlines that match the business type
+          - Write detailed, realistic descriptions and paragraphs
+          - Use industry-appropriate terminology and tone
+          - Include specific calls-to-action relevant to the business
+          - Generate realistic business details (address, hours, contact info)
+
+          Styling Requirements:
+          - Use comprehensive TailwindCSS classes for ALL styling - no inline styles or CSS
+          - Include hover effects, transitions, and animations using Tailwind classes
+          - Use Tailwind's color palette effectively (primary colors, shades, etc.)
+          - Implement proper spacing using Tailwind's padding/margin utilities
+          - Use Tailwind's flexbox and grid classes for layouts
+          - Include responsive design using Tailwind's breakpoint prefixes (sm:, md:, lg:, xl:)
+          - Add shadows, rounded corners, and other visual effects using Tailwind
+          - Use Tailwind's typography classes for text styling
+          
+          Content Requirements:
           - Generate semantic HTML5 with proper accessibility attributes
-          - Use TailwindCSS classes for all styling (be specific with classes, don't use @apply)
-          - Make the design fully responsive
-          - Generate realistic, engaging content relevant to the website type
-          - Create compelling headlines, descriptions, and calls-to-action
-          - Use high-quality images from unsplash.com relevant to the content
-          - Return ONLY the complete HTML code without any explanations or placeholders
+          - Create realistic, engaging content relevant to the website type
+          - Use compelling headlines, descriptions, and calls-to-action
+          - Include high-quality images from unsplash.com relevant to the content
+          - Ensure proper contrast ratios for accessibility
           
           Important:
-          - Replace all placeholder text (like 'movie title' or 'description here') with realistic, engaging content
-          - Use creative, natural language for all text content
-          - Ensure all content matches the website theme from the layout structure
-          - Make sure TailwindCSS classes are comprehensive for styling`
+          - Every element must have appropriate Tailwind classes
+          - Use modern design patterns (cards, gradients, overlays, etc.)
+          - Include interactive elements with hover/focus states
+          - Ensure smooth transitions between responsive breakpoints
+          - Return only raw HTML without any markdown or code blocks`
         },
         {
           role: "user",
@@ -91,7 +108,7 @@ app.post('/create-design', async (req, res) => {
     // Get the raw HTML from LLaMA and wrap it with necessary tags
     const rawHtml = completion.choices[0].message.content.replace(/```html|```/g, '').trim();
     
-    // Wrap the HTML with proper doctype and Tailwind CSS
+    // Wrap the HTML with proper doctype and Tailwind CSS with configuration
     const wrappedHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -100,6 +117,25 @@ app.post('/create-design', async (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generated Website</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#3b82f6',
+              secondary: '#64748b',
+            },
+          },
+        },
+      }
+    </script>
+    <style type="text/tailwindcss">
+      @layer utilities {
+        .text-shadow {
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+      }
+    </style>
 </head>
 <body>
     ${rawHtml}

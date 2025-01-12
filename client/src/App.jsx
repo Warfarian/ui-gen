@@ -140,13 +140,22 @@ function App() {
               </button>
             </div>
             
-            <div className="border rounded-lg p-4 bg-white mb-4">
-              <iframe
-                srcDoc={generatedHtml}
-                className="w-full min-h-[800px] border-0"
-                title="Generated UI Preview"
-                sandbox="allow-scripts allow-same-origin"
-              />
+            <div className="border rounded-lg p-4 bg-white mb-4">                <iframe
+                  srcDoc={generatedHtml}
+                  className="w-full min-h-[800px] border-0"
+                  title="Generated UI Preview"
+                  sandbox="allow-scripts allow-same-origin allow-modals"
+                  onLoad={(e) => {
+                    // Ensure iframe content is fully loaded
+                    const iframe = e.target;
+                    if (iframe.contentDocument) {
+                      // Force a repaint to ensure styles are applied
+                      iframe.style.display = 'none';
+                      iframe.offsetHeight; // Force reflow
+                      iframe.style.display = 'block';
+                    }
+                  }}
+                />
             </div>
 
             {showCode && (
