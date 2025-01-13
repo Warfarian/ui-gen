@@ -1,11 +1,15 @@
 import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import CodeMirror from '@uiw/react-codemirror'
 import { html } from '@codemirror/lang-html'
 import { basicSetup } from '@uiw/codemirror-extensions-basic-setup'
 import TemplateSelector from './components/TemplateSelector'
+import LandingPage from './components/LandingPage'
+import Learning from './components/Learning'
 
-function App() {
+// Rename the existing App component to Builder
+const Builder = () => {
   const [isListening, setIsListening] = useState(false);
   const [design, setDesign] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -82,7 +86,29 @@ function App() {
       console.log('Received response:', data);
       setDesign(data);
       setCurrentDesign(data);
-      setMessages(prev => [...prev, { type: 'bot', text: data.aiResponse || 'Here is your design:' }]);
+      
+      // Add AI response messages to chat
+      if (data.aiResponse) {
+        const funnyMessages = [
+          'Beep boop, here ya go!',
+          'Boop beep, fresh design coming up!',
+          'Beep beep, design served hot!',
+          'Boop boop, design magic complete!'
+        ];
+        const randomMessage = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+        
+        if (!currentDesign) {
+          // First design - show both AI response and funny message
+          setMessages(prev => [
+            ...prev, 
+            { type: 'bot', text: data.aiResponse },
+            { type: 'bot', text: randomMessage }
+          ]);
+        } else {
+          // Subsequent designs - only show funny message
+          setMessages(prev => [...prev, { type: 'bot', text: randomMessage }]);
+        }
+      }
       
       if (data.html) {
         // Extract the first image URL from the HTML content
@@ -153,10 +179,13 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex fade-in">
       {/* Left side - Chat */}
-      <div className="w-1/3 p-6 border-r border-gray-200 bg-white overflow-y-auto">
-        <h1 className="text-2xl font-bold text-center mb-8 text-gray-900">UI Generator</h1>
+      <div className="w-1/3 p-6 border-r border-gray-200 bg-white/90 backdrop-blur-sm overflow-y-auto shadow-lg">
+        <h1 className="text-3xl font-extrabold text-center mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          Ctrl + Alt + Design
+          <span className="block text-sm font-medium text-gray-500 mt-2">AI-Powered Web Design Studio</span>
+        </h1>
         
         {/* Template Selector */}
         <div className="mb-8">
@@ -171,10 +200,10 @@ function App() {
           {messages.map((message, index) => (
             <div 
               key={index}
-              className={`p-3 rounded-lg ${
+              className={`p-3 rounded-lg shadow-sm transition-all duration-200 hover:shadow-md ${
                 message.type === 'user' 
-                  ? 'bg-blue-100 ml-auto max-w-[80%]' 
-                  : 'bg-gray-100 mr-auto max-w-[80%]'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-auto max-w-[80%]' 
+                  : 'bg-white mr-auto max-w-[80%] border border-gray-100'
               }`}
             >
               <p className="text-sm">{message.text}</p>
@@ -196,7 +225,7 @@ function App() {
                 }
               }}
               placeholder="Type your website description..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200 hover:bg-white"
               disabled={isLoading || isListening}
             />
             <button
@@ -232,14 +261,14 @@ function App() {
       </div>
 
       {/* Right side - Preview */}
-      <div className="w-2/3 p-6 bg-gray-50 overflow-y-auto">
+      <div className="w-2/3 p-6 bg-gray-50/80 backdrop-blur-sm overflow-y-auto">
         {design && (
           <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Design Preview:</h2>
+            <div className="flex justify-between items-center mb-4 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Design Preview</h2>
               <button
                 onClick={() => setShowCode(!showCode)}
-                className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
               >
                 {showCode ? 'Hide Code' : 'View Code'}
               </button>
@@ -271,6 +300,19 @@ function App() {
       </div>
     </div>
   )
+};
+
+// New App component with routing
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/builder" element={<Builder />} />
+        <Route path="/learn" element={<Learning />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

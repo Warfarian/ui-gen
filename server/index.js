@@ -111,7 +111,10 @@ app.post('/create-design', async (req, res) => {
     console.log('Received request with text:', text);
     console.log('Previous design context:', previousDesign);
 
-    const systemPrompt = `You are a skilled web designer and developer. Create modern, responsive web designs with:
+    const systemPrompt = `You are a friendly web design assistant. Start your response with a conversational message about what you're creating, wrapped in an HTML comment like this:
+<!-- AI Response: I'm creating a modern business website with clean lines and professional styling... -->
+
+Then create modern, responsive web designs with:
 
 1. Content:
 - Use meaningful, specific content tailored to the theme
@@ -263,8 +266,23 @@ Example image usage:
 
     const firstImageUrl = template.previewImage;
 
+    // Extract AI response message if present in a comment
+    const aiResponseMatch = completion.choices[0].message.content.match(/<!-- AI Response: (.*?) -->/s);
+    let aiResponse;
+    
+    if (aiResponseMatch) {
+      // Remove any HTML/style tags from the response
+      aiResponse = aiResponseMatch[1].replace(/<[^>]*>/g, '').trim();
+    } else {
+      // Fallback to first non-HTML line if no comment
+      aiResponse = completion.choices[0].message.content
+        .split('\n')
+        .find(line => !line.includes('<') && !line.includes('>') && line.trim())
+        ?.trim() || "I've created your design based on your requirements. Let me know if you'd like any adjustments.";
+    }
+
     res.json({
-      aiResponse: "I've created a custom design based on your request. I used a modern, professional style with real content and proper visual hierarchy. Feel free to ask for specific adjustments to the layout, colors, content, or any other aspect!",
+      aiResponse: aiResponse,
       html: html,
       imageUrl: firstImageUrl,
       designChoices: {
