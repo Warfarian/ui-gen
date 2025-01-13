@@ -54,6 +54,7 @@ const Builder = () => {
   };
 
   const [currentDesign, setCurrentDesign] = useState(null);
+  const [referenceImage, setReferenceImage] = useState(null);
 
   const sendToBackend = async (text) => {
     if (!selectedTemplate) {
@@ -74,7 +75,8 @@ const Builder = () => {
         body: JSON.stringify({ 
           text,
           template: selectedTemplate,
-          previousDesign: currentDesign?.html
+          previousDesign: currentDesign?.html,
+          referenceImage: referenceImage
         }),
       });
       
@@ -228,6 +230,28 @@ const Builder = () => {
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200 hover:bg-white"
               disabled={isLoading || isListening}
             />
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setReferenceImage(reader.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              <div className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            </label>
             <button
               onClick={handleTextSubmit}
               disabled={isLoading || isListening || !textInput.trim()}
@@ -306,6 +330,7 @@ const Builder = () => {
 function App() {
   return (
     <Router>
+
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/builder" element={<Builder />} />

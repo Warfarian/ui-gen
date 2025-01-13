@@ -23,7 +23,8 @@ app.use(cors({
 
 // Add OPTIONS handling for preflight requests
 app.options('*', cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Route to handle image generation
 app.post('/get-image', async (req, res) => {
@@ -55,11 +56,21 @@ app.post('/get-image', async (req, res) => {
   }
 });
 
-// Initialize OpenAI client
+// Initialize OpenAI client with vision capabilities
 const client = new OpenAI({
   baseURL: 'https://api.studio.nebius.ai/v1/',
   apiKey: process.env.NEBIUS_API_KEY,
 });
+
+// Helper function to process image data
+const processImageInput = async (imageData) => {
+  // Convert image data to base64 if it's not already
+  const base64Image = imageData.startsWith('data:') 
+    ? imageData 
+    : `data:image/jpeg;base64,${imageData}`;
+  
+  return base64Image;
+};
 
 // Helper function to extract image URL from response
 const extractImageUrl = (response) => {
@@ -104,14 +115,13 @@ const extractImageUrl = (response) => {
 };
 
 // Route to handle design creation
-app.post('/create-design', async (req, res) => {
-  const { text, previousDesign, template } = req.body;
+app.post('/create-design', async (req, res) => {      const { text, previousDesign, template, referenceImage } = req.body;
   
   try {
     console.log('Received request with text:', text);
     console.log('Previous design context:', previousDesign);
 
-    const systemPrompt = `You are a friendly web design assistant. Start your response with a conversational message about what you're creating, wrapped in an HTML comment like this:
+    let systemPrompt = `You are a friendly web design assistant with visual understanding capabilities. Start your response with a conversational message about what you're creating, wrapped in an HTML comment like this:
 <!-- AI Response: I'm creating a modern business website with clean lines and professional styling... -->
 
 Then create modern, responsive web designs with:
@@ -163,7 +173,30 @@ Example image usage:
 <!-- GENERATE_IMAGE: A stunning modern workspace with natural light -->
 <img src="IMAGE_URL_PLACEHOLDER" alt="Hero workspace" class="w-full h-[400px] object-cover rounded-lg shadow-lg">`;
 
-    const userPrompt = `As an expert web designer, create a modern, visually striking webpage based on this description: "${text}".
+    let messages = [
+      { role: "system", content: systemPrompt }
+    ];
+
+    // If there's a reference image, add it to the conversation
+    if (referenceImage) {
+      const processedImage = await processImageInput(referenceImage);
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Here's a reference image for the design style I'm looking for:"
+          },
+          {
+            type: "image",
+            image_url: processedImage
+          }
+        ]
+      });
+    }
+
+    // Add the main design request
+    const userPrompt = `As an expert web designer, create a modern, visually striking webpage based on this description: "${text}"${referenceImage ? " incorporating elements and style inspiration from the reference image provided" : ""}.
     
     Template Information:
     Name: ${template.name}
@@ -209,7 +242,7 @@ Example image usage:
 
     const completion = await client.chat.completions.create({
       temperature: 0,
-      model: "meta-llama/Llama-3.3-70B-Instruct",
+      model: "Qwen/Qwen2-VL-7B-Instruct",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
@@ -281,9 +314,45 @@ Example image usage:
         ?.trim() || "I've created your design based on your requirements. Let me know if you'd like any adjustments.";
     }
 
+    // Extract CSS from the response if present
+    const cssMatch = html.match(/\/\* styles\.css \*\/([\s\S]*?)(?=<|$)/);
+    const css = cssMatch ? cssMatch[1].trim() : '';
+    
+    // Remove the CSS from the HTML
+    html = html.replace(/\/\* styles\.css \*\/[\s\S]*?(?=<|$)/, '');
+
+    const htmlWithStyles = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <script src="https://cdn.tailwindcss.com"></script>
+          <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+          <style>
+            ${css}
+            body {
+              font-family: 'Montserrat', system-ui, sans-serif;
+              line-height: 1.5;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 1200px;
+              margin: 0 auto;
+              padding: 2rem;
+            }
+          </style>
+        </head>
+        <body>
+          ${html}
+        </body>
+      </html>`;
+
     res.json({
       aiResponse: aiResponse,
-      html: html,
+      html: htmlWithStyles,
       imageUrl: firstImageUrl,
       designChoices: {
         layout: completion.choices[0].message.content.match(/<!-- Layout: (.*?) -->/)?.[1] || '',
