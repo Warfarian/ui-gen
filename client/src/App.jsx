@@ -49,6 +49,8 @@ function App() {
     }
   };
 
+  const [currentDesign, setCurrentDesign] = useState(null);
+
   const sendToBackend = async (text) => {
     if (!selectedTemplate) {
       setMessages(prev => [...prev, { 
@@ -67,7 +69,8 @@ function App() {
         },
         body: JSON.stringify({ 
           text,
-          template: selectedTemplate
+          template: selectedTemplate,
+          previousDesign: currentDesign?.html
         }),
       });
       
@@ -78,6 +81,7 @@ function App() {
       const data = await response.json();
       console.log('Received response:', data);
       setDesign(data);
+      setCurrentDesign(data);
       setMessages(prev => [...prev, { type: 'bot', text: data.aiResponse || 'Here is your design:' }]);
       
       if (data.html) {
@@ -136,12 +140,13 @@ function App() {
       if (!navigator.onLine) {
         errorMessage = 'You appear to be offline. Please check your internet connection.';
       } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        errorMessage = 'Unable to connect to the server. Please make sure the server is running.';
+        errorMessage = 'Unable to connect to the server. Please make sure the server is running on port 3001.';
       } else {
         errorMessage = error.response?.data?.details || error.message || 'Sorry, there was an error processing your request.';
       }
       
       setMessages(prev => [...prev, { type: 'bot', text: errorMessage }]);
+      console.log('Server URL:', 'http://localhost:3001/create-design'); // Add logging
     } finally {
       setIsLoading(false);
     }
