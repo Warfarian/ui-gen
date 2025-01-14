@@ -10,6 +10,11 @@ import Learning from './components/Learning'
 // Rename the existing App component to Builder
 const Builder = () => {
   const [isListening, setIsListening] = useState(false);
+  const [conversationState, setConversationState] = useState({
+    messages: [],
+    isProcessing: false,
+    error: null
+  });
   const [design, setDesign] = useState(null);
   const [previewMode, setPreviewMode] = useState('desktop');
 
@@ -34,45 +39,197 @@ const Builder = () => {
 
   const handleTextSubmit = async () => {
     if (!textInput.trim() || isLoading) return;
-    
-    setMessages(prev => [...prev, { type: 'user', text: textInput }]);
     await sendToBackend(textInput);
     setTextInput('');
   };
 
+  // Speech recognition setup
   const startListening = () => {
-    if ('webkitSpeechRecognition' in window) {
-      const recognition = new window.webkitSpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+    if (!('webkitSpeechRecognition' in window)) {
+      setConversationState(prev => ({
+        ...prev,
+        error: 'Speech recognition is not supported in this browser.'
+      }));
+      return;
+    }
 
-      recognition.onstart = () => {
-        setIsListening(true);
-      };
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
 
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setMessages(prev => [...prev, { type: 'user', text: transcript }]);
-        sendToBackend(transcript);
-      };
+    recognition.onstart = () => {
+      setIsListening(true);
+      setConversationState(prev => ({
+        ...prev,
+        error: null
+      }));
+    };
 
-      recognition.onend = () => {
-        setIsListening(false);
-      };
+    recognition.onresult = (event) => {
+      // Show interim results
+      const interimTranscript = Array.from(event.results)
+        .filter(result => !result.isFinal)
+        .map(result => result[0].transcript)
+        .join('');
 
+      const finalTranscript = Array.from(event.results)
+        .filter(result => result.isFinal)
+        .map(result => result[0].transcript)
+        .join('');
+      
+      // Show interim or final transcript
+      const currentTranscript = interimTranscript || finalTranscript;
+      if (currentTranscript) {
+        setConversationState(prev => ({
+          ...prev,
+          messages: [
+            ...prev.messages.filter(m => !m.interim), // Keep only non-interim messages
+            { type: 'user', text: currentTranscript, interim: !finalTranscript }
+          ]
+        }));
+      }
+
+      // Process final results without adding a new message
+      if (finalTranscript) {
+        handleUserInput(finalTranscript, true);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      setConversationState(prev => ({
+        ...prev,
+        error: `Speech recognition error: ${event.error}`
+      }));
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
       recognition.start();
-    } else {
-      alert('Speech recognition is not supported in this browser.');
+    } catch (error) {
+      setConversationState(prev => ({
+        ...prev,
+        error: `Failed to start speech recognition: ${error.message}`
+      }));
+    }
+  };
+
+  // Handle user input (both voice and text)
+  const handleUserInput = async (input, skipMessageAdd = false) => {
+    try {
+      setConversationState(prev => ({
+        ...prev,
+        isProcessing: true,
+        messages: skipMessageAdd ? prev.messages : [...prev.messages, { type: 'user', text: input }]
+      }));
+
+      // Send to backend for processing
+      const result = await sendToBackend(input);
+
+      if (result && result.aiResponse) {
+        // Generate unique ID for the message
+        const messageId = Date.now().toString();
+        
+        // Add AI message to conversation
+        setConversationState(prev => ({
+          ...prev,
+          isProcessing: false,
+          messages: [...prev.messages, { 
+            id: messageId,
+            type: 'ai', 
+            text: result.aiResponse,
+            speaking: false
+          }]
+        }));
+
+        // Play AI response
+        await playAIResponse(result.aiResponse, messageId);
+      } else {
+        // Just update processing state without adding a message
+        setConversationState(prev => ({
+          ...prev,
+          isProcessing: false
+        }));
+      }
+    } catch (error) {
+      setConversationState(prev => ({
+        ...prev,
+        isProcessing: false,
+        error: `Error processing input: ${error.message}`
+      }));
+    }
+  };
+
+  // Play AI response using ElevenLabs
+  const playAIResponse = async (text, messageId) => {
+    try {
+      const response = await fetch('http://localhost:3001/synthesize-voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Voice synthesis failed: ${response.statusText}`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      // Update UI to show speaking state
+      setConversationState(prev => ({
+        ...prev,
+        messages: prev.messages.map(msg => 
+          msg.id === messageId ? { ...msg, speaking: true } : msg
+        )
+      }));
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        // Update UI to remove speaking state
+        setConversationState(prev => ({
+          ...prev,
+          messages: prev.messages.map(msg => 
+            msg.id === messageId ? { ...msg, speaking: false } : msg
+          )
+        }));
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error('Error playing AI response:', error);
+      setConversationState(prev => ({
+        ...prev,
+        error: `Failed to play voice response: ${error.message}`
+      }));
     }
   };
 
   const [currentDesign, setCurrentDesign] = useState(null);
   const [referenceImage, setReferenceImage] = useState(null);
 
+  // Extract AI response from HTML
+  const extractAIResponse = (html) => {
+    // Look for AI response in a comment or specific tag
+    const responseMatch = html.match(/<!-- AI Response: (.*?) -->/) || 
+                         html.match(/<ai-response>(.*?)<\/ai-response>/);
+    return responseMatch ? responseMatch[1] : null;
+  };
+
   const sendToBackend = async (text) => {
     setIsLoading(true);
     try {
       console.log('Sending request to server...');
+      // Get the current HTML from the iframe
+      const previewIframe = document.querySelector('#preview-iframe');
+      const currentHtml = previewIframe?.srcdoc || currentDesign?.html || '';
+
       const response = await fetch('http://localhost:3001/create-design', {
         method: 'POST',
         headers: {
@@ -81,8 +238,12 @@ const Builder = () => {
         body: JSON.stringify({ 
           text,
           template: selectedTemplate,
-          previousDesign: currentDesign?.html,
-          referenceImage: referenceImage
+          previousDesign: currentHtml, // Send the current HTML from the iframe
+          referenceImage: referenceImage,
+          previousMessages: conversationState.messages.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant',
+            content: msg.text
+          }))
         }),
       });
       
@@ -95,9 +256,21 @@ const Builder = () => {
       setDesign(data);
       setCurrentDesign(data);
       
-      // Add AI response messages to chat
+      // Add AI response to conversation and trigger voice synthesis
       if (data.aiResponse) {
-        setMessages(prev => [...prev, { type: 'bot', text: data.aiResponse }]);
+        const messageId = Date.now().toString();
+        setConversationState(prev => ({
+          ...prev,
+          messages: [...prev.messages, { 
+            id: messageId,
+            type: 'ai', 
+            text: data.aiResponse,
+            speaking: false
+          }]
+        }));
+        
+        // Play AI response
+        await playAIResponse(data.aiResponse, messageId);
       }
       
       if (data.html) {
@@ -118,25 +291,51 @@ const Builder = () => {
             throw new Error('Invalid HTML structure');
           }
 
-          // Update state
+          // Update state with new HTML
           setGeneratedHtml(sanitizedHtml);
           setDesign(data);
           setCurrentDesign(data);
           
-          // Update iframe with error handling
+          // Force iframe refresh
           const previewIframe = document.querySelector('#preview-iframe');
           if (previewIframe) {
-            // Create a message channel for iframe communication
-            const channel = new MessageChannel();
+            previewIframe.srcdoc = sanitizedHtml;
             
-            // Listen for load events
-            previewIframe.onload = () => {
-              console.log('Preview loaded successfully');
-              // Additional initialization if needed
-            };
-
+            // Force Tailwind to reprocess styles after a short delay
+            setTimeout(() => {
+              const doc = previewIframe.contentDocument;
+              if (doc) {
+                doc.body.style.display = 'none';
+                setTimeout(() => {
+                  doc.body.style.display = '';
+                }, 50);
+              }
+            }, 100);
+          }
+          
+          // Get reference to iframe
+          if (previewIframe) {
+            console.log('Updating preview with new HTML');
+            
+            // Store current scroll position
+            const currentScroll = previewIframe.contentWindow?.scrollY || 0;
+            
             // Update content
             previewIframe.srcdoc = sanitizedHtml;
+            
+            // Restore scroll position and reprocess styles after load
+            previewIframe.onload = () => {
+              const doc = previewIframe.contentDocument;
+              if (doc) {
+                // Force Tailwind reprocessing
+                doc.body.style.display = 'none';
+                requestAnimationFrame(() => {
+                  doc.body.style.display = '';
+                  // Restore scroll position
+                  previewIframe.contentWindow.scrollTo(0, currentScroll);
+                });
+              }
+            };
           }
         } catch (error) {
           console.error('Error processing HTML:', error);
@@ -192,16 +391,26 @@ const Builder = () => {
           </div>
         
         <div className="mb-6 space-y-4">
-          {messages.map((message, index) => (
+          {conversationState.messages.map((message, index) => (
             <div 
               key={index}
               className={`p-3 rounded-lg shadow-sm transition-all duration-200 hover:shadow-md ${
                 message.type === 'user' 
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-auto max-w-[80%]' 
-                  : 'bg-white mr-auto max-w-[80%] border border-gray-100'
+                  ? `bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-auto max-w-[80%] 
+                     ${message.interim ? 'opacity-70' : ''}`
+                  : `bg-white mr-auto max-w-[80%] border border-gray-100
+                     ${message.speaking ? 'animate-pulse border-blue-300' : ''}`
               }`}
             >
-              <p className="text-sm">{message.text}</p>
+              <div className="flex items-center gap-2">
+                {message.type === 'user' && message.interim && (
+                  <span className="text-xs text-white/80">Listening...</span>
+                )}
+                {message.type === 'ai' && message.speaking && (
+                  <span className="text-xs text-blue-500">Speaking...</span>
+                )}
+                <p className="text-sm">{message.text}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -255,19 +464,40 @@ const Builder = () => {
           </div>
 
           {/* Voice Input Button */}
-          <button
-            onClick={startListening}
-            disabled={isLoading}
-            className={`w-full py-3 px-6 text-white rounded-lg text-lg font-semibold transition-all
-              ${isListening 
-                ? 'bg-red-500 hover:bg-red-600' 
-                : isLoading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-500 hover:bg-blue-600'
-              }`}
-          >
-            {isListening ? 'Listening...' : isLoading ? 'Generating...' : 'Start Voice Input'}
-          </button>
+          <div>
+            {/* Voice Input Button with Processing State */}
+            {conversationState.isProcessing ? (
+              <div className="flex items-center justify-center space-x-2 py-3 px-6 bg-gray-400 text-white rounded-lg text-lg font-semibold">
+                <div className="animate-pulse">Processing</div>
+                <div className="animate-bounce">•</div>
+                <div className="animate-bounce delay-100">•</div>
+                <div className="animate-bounce delay-200">•</div>
+              </div>
+            ) : (
+              <button
+                onClick={startListening}
+                disabled={isLoading}
+                className={`w-full py-3 px-6 text-white rounded-lg text-lg font-semibold transition-all
+                  ${isListening 
+                    ? 'bg-red-500 hover:bg-red-600' 
+                    : isLoading
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  }`}
+              >
+                {isListening ? 'Listening...' 
+                  : isLoading ? 'Generating...' 
+                  : 'Talk to Buffy'}
+              </button>
+            )}
+
+            {/* Error Display */}
+            {conversationState.error && (
+              <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-lg">
+                {conversationState.error}
+              </div>
+            )}
+          </div>
           
           {isLoading && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">

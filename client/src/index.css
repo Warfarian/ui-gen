@@ -56,6 +56,36 @@
   animation: fadeIn 0.6s ease-out forwards;
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes wave {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+.speaking {
+  position: relative;
+}
+
+.speaking::before {
+  content: '🔊';
+  position: absolute;
+  left: -1.5rem;
+  animation: wave 1s ease-in-out infinite;
+}
+
 .fade-in-delay-1 {
   animation: fadeIn 0.6s ease-out 0.2s forwards;
   opacity: 0;

@@ -3,11 +3,16 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import ElevenLabs from 'elevenlabs-node';
 
+dotenv.config();
 const IMAGE_API_URL = 'https://magicloops.dev/api/loop/0e90271e-dd9d-4745-b253-a82ef4286126/run';
+const voice = new ElevenLabs({
+  apiKey: process.env.ELEVENLABS_API_KEY,
+  voiceId: process.env.ELEVENLABS_VOICE_ID
+});
 const app = express();
 const port = 3001;
-dotenv.config();
 
 // Middleware setup
 app.use(cors({
@@ -21,6 +26,34 @@ app.use(cors({
 app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Voice synthesis endpoint
+app.post('/synthesize-voice', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    console.log('Synthesizing voice for text:', text);
+    const audioBuffer = await voice.textToSpeechStream({
+      textInput: text,
+      voiceId: process.env.ELEVENLABS_VOICE_ID,
+      stability: 0.5,
+      similarityBoost: 0.5,
+      responseType: 'arraybuffer'
+    });
+    
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.send(audioBuffer);
+  } catch (error) {
+    console.error('Error synthesizing voice:', error);
+    res.status(500).json({ 
+      error: 'Failed to synthesize voice',
+      details: error.message 
+    });
+  }
+});
 
 // Initialize OpenAI client
 const client = new OpenAI({
@@ -101,115 +134,90 @@ app.post('/create-design', async (req, res) => {
   
   try {
     const templateContext = template ? getTemplateContext(template.id) : '';
-    const userPrompt = `${templateContext}${text}
+    // Build conversation context
+    const conversationContext = req.body.previousMessages?.map(msg => 
+      `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+    ).join('\n') || '';
+
+
+    const userPrompt = `Current request: ${text}
+
+Previous conversation:
+${conversationContext}
+
+Template context:
+${templateContext}
 ${template ? `Colors: ${template.defaultContent.style.colors.join(', ')}
-Font: ${template.defaultContent.style.fonts.join(', ')}` : ''}`;
+Font: ${template.defaultContent.style.fonts.join(', ')}` : ''}
 
-    const systemPrompt = `You are an expert web developer specializing in modern, responsive design with TailwindCSS.
+Current HTML to modify:
+${req.body.previousDesign || ''}
 
-COMPONENT STRUCTURE:
-1. Always use semantic HTML5 elements (nav, header, main, section, footer)
-2. Follow this structure for sections:
-   <!-- Section: [NAME] -->
-   <section class="[BASE_CLASSES]">
-     <div class="container mx-auto px-4">
-       [CONTENT]
-     </div>
-   </section>
+Please update the HTML based on the current request while preserving the overall structure and styling. Make specific changes requested while maintaining consistency with previous modifications.`;
 
-TEMPLATE GUIDELINES:
-1. Navigation:
-   - Always include responsive navigation
-   - Use template.components.navigation patterns
-   - Include mobile menu toggle
+    // Nebius prompt for code generation
+    const nebiusPrompt = `You should strictly generate HTML code in response to the input, 
+without offering guidance, examples, or suggestions.
 
-2. Hero Sections:
-   - Full-width design
-   - Responsive text sizing
-   - Clear call-to-action
-   - Optional background image/pattern
+It is imperative that the HTML code you generate is compatible and renderable with TailwindCSS. 
+You will often receive existing HTML code from users. 
+In such cases, incorporate your additions into the existing code, 
+ensuring that the entire HTML code, inclusive of your modifications, 
+is provided in the response. 
 
-3. Content Sections:
-   - Consistent padding/margins
-   - Grid/Flex for layout
-   - Responsive breakpoints
-   - Proper heading hierarchy
+Your response should consist exclusively of HTML code, omitting markdown or explanatory text.
+Make sure to import TailwindCSS into your HTML code. No images unless specifically requested.
+Respond exclusively with HTML. No explanations needed.
 
-4. Interactive Elements:
-   - Hover/focus states
-   - Smooth transitions
-   - Accessible buttons/links
-   - Loading states
+Important: Do not include error containers or hidden elements in your responses. Focus on the main content structure.
 
-TAILWIND PATTERNS:
-1. Layout:
-   - Container: "container mx-auto px-4"
-   - Grid: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-   - Stack: "space-y-4 md:space-y-6"
+Ensure the HTML code is fully compatible with TailwindCSS. If given existing HTML, integrate the changes while preserving the structure but updating the styling. Pay special attention to color-related requests in the conversation history. Respond exclusively with HTML, with no markdown or explanations.`;
 
-2. Components:
-   - Cards: "group rounded-lg bg-white shadow-md hover:shadow-xl transition-all"
-   - Buttons: "px-6 py-3 rounded-lg font-medium transition-all"
-   - Images: "w-full h-full object-cover rounded-lg"
+    // ElevenLabs conversation prompt
+    const elevenLabsPrompt = `You are Buffy, a friendly and enthusiastic AI web designer. Respond naturally to user requests as if you're having a conversation. Keep it short and friendly. Use at most one emoji. Focus on what you're doing for the user, not technical details. Upon follow ups, do not include any HTML code in your responses - keep responses conversational and focused on what you're doing.
 
-3. Typography:
-   - Headings: "text-3xl md:text-4xl lg:text-5xl font-bold"
-   - Body: "text-base md:text-lg text-gray-600"
-   - Links: "text-primary hover:text-primary-dark transition-colors"
+Example responses:
+Sure thing! Adding those fields for you right now! ✨
+Of course, I'll get those new fields set up! 🌟
+I'll add the phone and gender fields to your form! ✨`;
 
-ERROR HANDLING:
-1. Always include fallback classes
-2. Use optional chaining for dynamic content
-3. Provide alt text for images
-4. Include ARIA labels for accessibility
-
-RESPONSIVE DESIGN:
-1. Mobile-first approach
-2. Use standard breakpoints: sm, md, lg, xl
-3. Stack on mobile, grid on larger screens
-4. Adjust text sizes across breakpoints
-
-OUTPUT FORMAT:
-1. Return complete HTML document
-2. Include TailwindCSS CDN
-3. Add required meta tags
-4. Include Font Awesome for icons
-
-Remember to:
-- Use template colors and fonts if provided
-- Implement proper spacing hierarchy
-- Add subtle animations/transitions
-- Ensure accessibility compliance
-- Include proper meta tags`;
-
-    const completion = await client.chat.completions.create({
-      temperature: 0.5,
-      max_tokens: 1000,
+    // Get conversational response from ElevenLabs prompt
+    const conversationCompletion = await client.chat.completions.create({
+      temperature: 0.7,
+      max_tokens: 50,
       model: "Qwen/Qwen2-VL-7B-Instruct",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: elevenLabsPrompt },
         { role: "user", content: userPrompt }
       ]
     });
 
-    // Extract AI response message
-    const funnyMessages = [
-      "Design magic complete! Here's what I created...",
-      "Fresh design served! Take a look...",
-      "Design ready for launch! Check it out...",
-      "Design crafted with care! What do you think..."
-    ];
-    const aiResponse = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
+    // Get HTML from Nebius with code-focused prompt
+    const codeCompletion = await client.chat.completions.create({
+      temperature: 0.2,
+      max_tokens: 1000,
+      model: "Qwen/Qwen2-VL-7B-Instruct",
+      messages: [
+        { role: "system", content: nebiusPrompt },
+        { role: "user", content: userPrompt }
+      ]
+    });
 
-    // Extract HTML content
-    let html = completion.choices[0].message.content;
-    const htmlStartIndex = html.indexOf('<!DOCTYPE html>');
-    if (htmlStartIndex === -1) {
-      html = html.replace(/```html\n|```\n|```/g, '').trim();
-    } else {
-      html = html.substring(htmlStartIndex);
+    // Extract HTML content and AI response
+    let html = codeCompletion.choices[0].message.content;
+    let aiResponse = conversationCompletion.choices[0].message.content.replace(/^"|"$/g, '').trim();
+
+    if (!aiResponse) {
+      // Fallback to funny messages if no AI response
+      const funnyMessages = [
+        "Design magic complete! Here's what I created...",
+        "Fresh design served! Take a look...",
+        "Design ready for launch! Check it out...",
+        "Design crafted with care! What do you think..."
+      ];
+      aiResponse = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
     }
-    
+
     if (!html) {
       throw new Error('No HTML content received from AI');
     }
@@ -326,14 +334,19 @@ Remember to:
 </body>
 </html>`;
 
+    // Add context to the AI response
+    if (template) {
+      aiResponse += ` I've used the ${template.name} template with its predefined styles and components.`;
+    }
+
     res.json({
-      aiResponse: funnyMessages[Math.floor(Math.random() * funnyMessages.length)],
+      aiResponse,
       html: htmlWithStyles,
       imageUrl: template?.previewImage || 'https://via.placeholder.com/800x600?text=Preview',
       designChoices: {
-        layout: completion.choices[0].message.content.match(/<!-- Layout: (.*?) -->/)?.[1] || '',
-        colors: completion.choices[0].message.content.match(/<!-- Colors: (.*?) -->/)?.[1] || '',
-        features: completion.choices[0].message.content.match(/<!-- Features: (.*?) -->/)?.[1] || ''
+        layout: html.match(/<!-- Layout: (.*?) -->/)?.[1] || '',
+        colors: html.match(/<!-- Colors: (.*?) -->/)?.[1] || '',
+        features: html.match(/<!-- Features: (.*?) -->/)?.[1] || ''
       }
     });
   } catch (error) {

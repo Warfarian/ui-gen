@@ -1,6 +1,53 @@
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
 
 const LandingPage = () => {
+  const playWelcomeMessage = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/synthesize-voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: "Welcome to Ctrl Alt Design! I'm your AI assistant, ready to help you create stunning websites. Would you like to start building, or learn more about UI/UX design?"
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Voice synthesis failed: ${response.statusText}`);
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+      };
+      
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('Autoplay failed:', error);
+          // Only create button if autoplay fails
+          const playButton = document.createElement('button');
+          playButton.className = 'fixed top-4 right-4 px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-colors z-50';
+          playButton.textContent = '🔊 Play Welcome Message';
+          playButton.onclick = playWelcomeMessage;
+          document.body.appendChild(playButton);
+        });
+      }
+    } catch (error) {
+      console.error('Error playing welcome message:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Attempt to play welcome message immediately
+    playWelcomeMessage();
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
       <div className="container mx-auto px-6 py-20">
