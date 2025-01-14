@@ -3,9 +3,130 @@ import templates from '../templates';
 
 const TemplateSelector = ({ onSelect, selectedTemplate }) => {
   const [previewTemplate, setPreviewTemplate] = useState(templates[0]);
+  const [isolatedComponent, setIsolatedComponent] = useState(null);
+
+  // Function to handle component isolation
+  const handleComponentIsolation = (componentType) => {
+    if (isolatedComponent === componentType) {
+      setIsolatedComponent(null); // Toggle off if already selected
+    } else {
+      setIsolatedComponent(componentType);
+    }
+  };
+
+  // Function to render isolated component preview
+  const renderIsolatedComponent = () => {
+    if (!isolatedComponent || !selectedTemplate) return null;
+
+    const componentMap = {
+      'buttons': (
+        <div className="space-y-4 p-8 bg-white rounded-lg">
+          <h3 className="text-lg font-semibold mb-6">Button Components</h3>
+          <div className="space-y-4">
+            <button className={`${selectedTemplate.defaultContent.style.components.buttons.primary}`}>
+              Primary Button
+            </button>
+            <button className={`${selectedTemplate.defaultContent.style.components.buttons.secondary}`}>
+              Secondary Button
+            </button>
+            <button className={`${selectedTemplate.defaultContent.style.components.buttons.icon}`}>
+              <i className="fas fa-star"></i>
+            </button>
+          </div>
+        </div>
+      ),
+      'cards': (
+        <div className="space-y-4 p-8 bg-white rounded-lg">
+          <h3 className="text-lg font-semibold mb-6">Card Components</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className={`${selectedTemplate.defaultContent.style.components.cards.default}`}>
+              <div className="p-6">
+                <h4 className="text-lg font-medium">Default Card</h4>
+                <p className="text-gray-600 mt-2">A simple card component with hover effects.</p>
+              </div>
+            </div>
+            <div className={`${selectedTemplate.defaultContent.style.components.cards.interactive}`}>
+              <div className="p-6">
+                <h4 className="text-lg font-medium">Interactive Card</h4>
+                <p className="text-gray-600 mt-2">Card with advanced hover interactions.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+      'navigation': (
+        <div className="space-y-4 p-8 bg-white rounded-lg">
+          <h3 className="text-lg font-semibold mb-6">Navigation Components</h3>
+          <nav className={`${selectedTemplate.defaultContent.style.components.navigation.default} mb-4`}>
+            <div className="container mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold">Default Nav</div>
+                <div className="flex space-x-4">
+                  <a href="#" className="hover:text-blue-500">Home</a>
+                  <a href="#" className="hover:text-blue-500">About</a>
+                  <a href="#" className="hover:text-blue-500">Contact</a>
+                </div>
+              </div>
+            </div>
+          </nav>
+          <nav className={`${selectedTemplate.defaultContent.style.components.navigation.transparent} mb-4`}>
+            <div className="container mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold">Transparent Nav</div>
+                <div className="flex space-x-4">
+                  <a href="#" className="hover:text-blue-500">Home</a>
+                  <a href="#" className="hover:text-blue-500">About</a>
+                  <a href="#" className="hover:text-blue-500">Contact</a>
+                </div>
+              </div>
+            </div>
+          </nav>
+        </div>
+      )
+    };
+
+    return componentMap[isolatedComponent];
+  };
 
   return (
     <div className="space-y-6">
+      {/* Component Isolation Controls */}
+      <div className="bg-white shadow-sm rounded-lg p-4 mb-6">
+        <h3 className="text-lg font-semibold mb-4">Component Preview</h3>
+        <div className="flex flex-wrap gap-2">
+          {['buttons', 'cards', 'navigation'].map((component) => (
+            <button
+              key={component}
+              onClick={() => handleComponentIsolation(component)}
+              className={`px-4 py-2 rounded-md transition-all text-sm font-medium
+                ${isolatedComponent === component 
+                  ? 'bg-blue-500 text-white shadow-md' 
+                  : 'text-gray-600 hover:bg-blue-50 hover:text-blue-500'}`}
+            >
+              {component.charAt(0).toUpperCase() + component.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Isolated Component Preview */}
+      {isolatedComponent && (
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">
+              {isolatedComponent.charAt(0).toUpperCase() + isolatedComponent.slice(1)} Preview
+            </h3>
+            <button
+              onClick={() => setIsolatedComponent(null)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          {renderIsolatedComponent()}
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="bg-white shadow-sm rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between space-x-8">

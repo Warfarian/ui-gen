@@ -70,13 +70,6 @@ const Builder = () => {
   const [referenceImage, setReferenceImage] = useState(null);
 
   const sendToBackend = async (text) => {
-    if (!selectedTemplate) {
-      setMessages(prev => [...prev, { 
-        type: 'bot', 
-        text: 'Please select a template first before generating a design.' 
-      }]);
-      return;
-    }
     setIsLoading(true);
     try {
       console.log('Sending request to server...');
@@ -104,77 +97,54 @@ const Builder = () => {
       
       // Add AI response messages to chat
       if (data.aiResponse) {
-        const funnyMessages = [
-          'Beep boop, here ya go!',
-          'Boop beep, fresh design coming up!',
-          'Beep beep, design served hot!',
-          'Boop boop, design magic complete!'
-        ];
-        const randomMessage = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
-        
-        if (!currentDesign) {
-          // First design - show both AI response and funny message
-          setMessages(prev => [
-            ...prev, 
-            { type: 'bot', text: data.aiResponse },
-            { type: 'bot', text: randomMessage }
-          ]);
-        } else {
-          // Subsequent designs - only show funny message
-          setMessages(prev => [...prev, { type: 'bot', text: randomMessage }]);
-        }
+        setMessages(prev => [...prev, { type: 'bot', text: data.aiResponse }]);
       }
       
       if (data.html) {
-        // Extract the first image URL from the HTML content
-        const imageUrlMatch = data.html.match(/<img[^>]*src="([^"]*)"[^>]*>/);
-        const imageUrl = imageUrlMatch ? imageUrlMatch[1] : null;
-        
-        // Add default styles and Tailwind CDN to the HTML content
-        const htmlWithStyles = `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-              <meta name="theme-color" content="#ffffff">
-              <meta name="color-scheme" content="light dark">
-              <script src="https://cdn.tailwindcss.com"></script>
-              <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-              <style>
-                body {
-                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                  line-height: 1.5;
-                  padding: 2rem;
-                  max-width: 1200px;
-                  margin: 0 auto;
-                  background-color: #f8fafc;
-                }
-                .ai-response {
-                  background: linear-gradient(to right, #e0f2fe, #f0f9ff);
-                  border-left: 4px solid #0ea5e9;
-                  padding: 1.5rem;
-                  border-radius: 0.5rem;
-                  margin-bottom: 2rem;
-                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-                }
-                .ai-label {
-                  color: #0369a1;
-                  font-weight: 500;
-                  font-size: 0.875rem;
-                  text-transform: uppercase;
-                  letter-spacing: 0.05em;
-                  margin-bottom: 0.5rem;
-                }
-              </style>
-            </head>
-            <body>
-              ${data.html}
-            </body>
-          </html>
-        `;
-        const sanitizedHtml = DOMPurify.sanitize(htmlWithStyles);
-        setGeneratedHtml(sanitizedHtml);
+        try {
+          // Sanitize HTML
+          const sanitizedHtml = DOMPurify.sanitize(data.html, {
+            ADD_TAGS: ['script', 'style'],
+            ADD_ATTR: ['onerror', 'onload'],
+            FORCE_BODY: true,
+          });
+
+          // Validate HTML structure
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(sanitizedHtml, 'text/html');
+          const errors = doc.getElementsByTagName('parsererror');
+          
+          if (errors.length > 0) {
+            throw new Error('Invalid HTML structure');
+          }
+
+          // Update state
+          setGeneratedHtml(sanitizedHtml);
+          setDesign(data);
+          setCurrentDesign(data);
+          
+          // Update iframe with error handling
+          const previewIframe = document.querySelector('#preview-iframe');
+          if (previewIframe) {
+            // Create a message channel for iframe communication
+            const channel = new MessageChannel();
+            
+            // Listen for load events
+            previewIframe.onload = () => {
+              console.log('Preview loaded successfully');
+              // Additional initialization if needed
+            };
+
+            // Update content
+            previewIframe.srcdoc = sanitizedHtml;
+          }
+        } catch (error) {
+          console.error('Error processing HTML:', error);
+          setMessages(prev => [...prev, { 
+            type: 'bot', 
+            text: 'There was an error processing the generated HTML. Please try again.' 
+          }]);
+        }
       }
     } catch (error) {
       console.error('Error sending data to backend:', error);
@@ -202,16 +172,24 @@ const Builder = () => {
         <h1 className="text-3xl font-extrabold text-center mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Ctrl + Alt + Design
           <span className="block text-sm font-medium text-gray-500 mt-2">AI-Powered Web Design Studio</span>
-        </h1>
-        
-        {/* Template Selector */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Choose a Template</h2>
-          <TemplateSelector 
-            onSelect={setSelectedTemplate}
-            selectedTemplate={selectedTemplate}
-          />
-        </div>
+        </h1>          {/* Template Selector */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Template (Optional)</h2>
+              {selectedTemplate && (
+                <button
+                  onClick={() => setSelectedTemplate(null)}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Clear Template
+                </button>
+              )}
+            </div>
+            <TemplateSelector 
+              onSelect={setSelectedTemplate}
+              selectedTemplate={selectedTemplate}
+            />
+          </div>
         
         <div className="mb-6 space-y-4">
           {messages.map((message, index) => (
@@ -400,34 +378,31 @@ const Builder = () => {
                   </div>
                 </div>
                 <div className={`transition-all duration-300 mx-auto ${getPreviewWidth()}`}>
-                  <iframe
-                    srcDoc={generatedHtml}
-                    className="w-full min-h-[800px] border-0"
-                    style={{
-                      height: previewMode === 'mobile' ? '667px' : 
-                             previewMode === 'tablet' ? '1024px' : 
-                             '800px'
-                    }}
-                    title="Generated UI Preview"
-                    sandbox="allow-scripts allow-same-origin"
-                    onLoad={(e) => {
-                      try {
-                        // Inject custom styles for preview
-                        const style = e.target.contentDocument.createElement('style');
-                        style.textContent = `
-                          * { transition: all 0.2s ease-in-out; }
-                          .hover-highlight:hover { outline: 2px solid #3b82f6; }
-                        `;
-                        e.target.contentDocument.head.appendChild(style);
-
-                        // Add hover highlight to elements
-                        const elements = e.target.contentDocument.querySelectorAll('div, section, article, nav, header, footer');
-                        elements.forEach(el => el.classList.add('hover-highlight'));
-                      } catch (error) {
-                        console.error('Error injecting preview styles:', error);
-                      }
-                    }}
-                  />
+                  {generatedHtml && (
+                    <iframe
+                      id="preview-iframe"
+                      srcDoc={generatedHtml}
+                      className="w-full min-h-[800px] border-0 bg-white"
+                      sandbox="allow-scripts allow-same-origin allow-modals"
+                      sandbox="allow-scripts allow-same-origin allow-modals"
+                      onLoad={(e) => {
+                        const doc = e.target.contentDocument;
+                        if (doc) {
+                          // Force Tailwind to re-process styles
+                          doc.body.style.display = 'none';
+                          setTimeout(() => {
+                            doc.body.style.display = '';
+                          }, 50);
+                        }
+                      }}
+                      style={{
+                        height: previewMode === 'mobile' ? '667px' : 
+                               previewMode === 'tablet' ? '1024px' : 
+                               '800px'
+                      }}
+                      title="Generated UI Preview"
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -437,14 +412,33 @@ const Builder = () => {
                 <Editor
                   height="400px"
                   defaultLanguage="html"
-                  value={generatedHtml}
-                  options={monacoConfig.editor}
+                  value={generatedHtml || '<!-- No code generated yet -->'}
+                  options={{
+                    ...monacoConfig.editor,
+                    readOnly: true,
+                    minimap: { enabled: false },
+                    lineNumbers: 'on',
+                    wordWrap: 'on',
+                    wrappingIndent: 'same',
+                    formatOnPaste: true,
+                    formatOnType: true
+                  }}
+                  onMount={(editor) => {
+                    // Format the code on initial load
+                    setTimeout(() => {
+                      editor.getAction('editor.action.formatDocument').run();
+                    }, 100);
+                  }}
                   theme={editorTheme}
                   beforeMount={(monaco) => {
-                    // Define custom themes
                     defineThemes(monaco);
-                    // Register HTML language features
                     monaco.languages.html.htmlDefaults.setOptions(monacoConfig.html);
+                    console.log("Monaco Editor Content:", {
+                      hasHtml: !!generatedHtml,
+                      length: generatedHtml?.length,
+                      preview: generatedHtml?.substring(0, 500),
+                      hasTailwind: generatedHtml?.includes('cdn.tailwindcss.com')
+                    });
                     
                     // Register custom completions
                     monaco.languages.registerCompletionItemProvider('html', {
@@ -506,4 +500,4 @@ function App() {
   );
 }
 
-export default App;
+export {App};

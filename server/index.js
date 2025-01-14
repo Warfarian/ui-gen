@@ -4,29 +4,31 @@ import OpenAI from 'openai';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 
-// Image API endpoint
 const IMAGE_API_URL = 'https://magicloops.dev/api/loop/0e90271e-dd9d-4745-b253-a82ef4286126/run';
-
 const app = express();
 const port = 3001;
 dotenv.config();
 
-// Middleware
-// CORS configuration
+// Middleware setup
 app.use(cors({
-  origin: true, // Allow all origins
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Access-Control-Allow-Origin']
 }));
 
-// Add OPTIONS handling for preflight requests
 app.options('*', cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Route to handle image generation
+// Initialize OpenAI client
+const client = new OpenAI({
+  baseURL: 'https://api.studio.nebius.ai/v1/',
+  apiKey: process.env.NEBIUS_API_KEY,
+});
+
+// Image generation endpoint
 app.post('/get-image', async (req, res) => {
   const { keywords } = req.body;
   
@@ -34,9 +36,7 @@ app.post('/get-image', async (req, res) => {
     console.log('Requesting image for keywords:', keywords);
     const response = await fetch(IMAGE_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: keywords })
     });
 
@@ -56,283 +56,135 @@ app.post('/get-image', async (req, res) => {
   }
 });
 
-// Initialize OpenAI client with vision capabilities
-const client = new OpenAI({
-  baseURL: 'https://api.studio.nebius.ai/v1/',
-  apiKey: process.env.NEBIUS_API_KEY,
-});
-
-// Helper function to process image data
-const processImageInput = async (imageData) => {
-  // Convert image data to base64 if it's not already
-  const base64Image = imageData.startsWith('data:') 
-    ? imageData 
-    : `data:image/jpeg;base64,${imageData}`;
-  
-  return base64Image;
+// Helper function for template context
+const getTemplateContext = (templateId) => {
+  const contexts = {
+    business: 'Create a professional business landing page with services, value proposition, and call-to-action sections.',
+    portfolio: 'Design a portfolio showcase with project highlights and skills sections.',
+    blog: 'Create a content-focused blog layout with featured posts and categories.',
+    'modern-landing': 'Design a modern landing page with hero section and key features.'
+  };
+  return contexts[templateId] || '';
 };
 
-// Helper function to extract image URL from response
-const extractImageUrl = (response) => {
-  try {
-    // If response is undefined or null, return placeholder
-    if (!response) {
-      return 'https://via.placeholder.com/800x600?text=Image+Generation+Failed';
+// Helper function for image placeholder replacement
+const replaceImagePlaceholders = (html, template) => {
+  if (!template) return html;
+  
+  let imageIndex = 0;
+  return html.replace(/<!-- GENERATE_IMAGE: (.*?) -->\s*<img[^>]*>|<img[^>]*src="IMAGE_URL_PLACEHOLDER"[^>]*>/g, (match, description) => {
+    const altText = description || "Template image";
+    let imageUrl;
+
+    if (match.toLowerCase().includes('hero') || (description?.toLowerCase().includes('hero'))) {
+      imageUrl = template.images.hero;
+    } else if (description?.toLowerCase().includes('team') && template.images.team?.length) {
+      imageUrl = template.images.team[imageIndex % template.images.team.length];
+    } else if (description?.toLowerCase().includes('service') && template.images.services?.length) {
+      imageUrl = template.images.services[imageIndex % template.images.services.length];
+    } else if (description?.toLowerCase().includes('project') && template.images.projects?.length) {
+      imageUrl = template.images.projects[imageIndex % template.images.projects.length];
+    } else if (template.images.features?.[imageIndex]) {
+      imageUrl = template.images.features[imageIndex];
+    } else {
+      imageUrl = template.images.about || template.previewImage;
     }
 
-    // If response is a string, try to parse JSON from it
-    if (typeof response === 'string') {
-      try {
-        const jsonMatch = response.match(/\{.*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed?.data?.[0]?.url) {
-            return parsed.data[0].url;
-          }
-        }
-      } catch (parseError) {
-        console.error('Error parsing JSON from string:', parseError);
-      }
-    }
-
-    // If response is an object, try different known formats
-    if (response?.data?.[0]?.url) {
-      return response.data[0].url;
-    }
-    if (response?.imageUrl) {
-      return response.imageUrl;
-    }
-    if (response?.url) {
-      return response.url;
-    }
-
-    // If no URL found, return placeholder
-    return 'https://via.placeholder.com/800x600?text=Image+Generation+Failed';
-  } catch (error) {
-    console.error('Error extracting image URL:', error);
-    return 'https://via.placeholder.com/800x600?text=Image+Generation+Failed';
-  }
+    imageIndex++;
+    return `<img src="${imageUrl || template.previewImage}" alt="${altText}" class="w-full h-[300px] object-cover rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">`;
+  });
 };
 
-// Route to handle design creation
-app.post('/create-design', async (req, res) => {      const { text, previousDesign, template, referenceImage } = req.body;
+// Design creation endpoint
+app.post('/create-design', async (req, res) => {      
+  const { text, template } = req.body;
   
   try {
-    console.log('Received request with text:', text);
-    console.log('Previous design context:', previousDesign);    let systemPrompt = `You are a friendly web design assistant with visual understanding capabilities. Start your response with a conversational message about what you're creating, wrapped in an HTML comment like this:
-<!-- AI Response: I'm creating a modern business website with clean lines and professional styling... -->
+    const templateContext = template ? getTemplateContext(template.id) : '';
+    const userPrompt = `${templateContext}${text}
+${template ? `Colors: ${template.defaultContent.style.colors.join(', ')}
+Font: ${template.defaultContent.style.fonts.join(', ')}` : ''}`;
 
-Important: Use the following animation and interaction patterns in your generated HTML:
+    const systemPrompt = `You are an expert web developer specializing in modern, responsive design with TailwindCSS.
 
-1. Section Entry Animations:
-- Hero sections: 'fade-in' for main content, 'fade-in-delay-1' for secondary content
-- Feature sections: 'fade-in-stagger' for cards or list items
-- CTA sections: 'pop-in' for attention-grabbing elements
-- Testimonials: 'slide-in-right' for dynamic entry
+COMPONENT STRUCTURE:
+1. Always use semantic HTML5 elements (nav, header, main, section, footer)
+2. Follow this structure for sections:
+   <!-- Section: [NAME] -->
+   <section class="[BASE_CLASSES]">
+     <div class="container mx-auto px-4">
+       [CONTENT]
+     </div>
+   </section>
 
-2. Interactive Components:
-- Buttons: Use template.components.buttons patterns
-  Primary: 'bg-gradient-to-r from-{color}-500 to-{color}-600 hover:scale-105 active:scale-95'
-  Secondary: 'bg-white/10 backdrop-blur-sm border border-{color}-500/20'
-  Icon: 'rounded-full bg-white/80 backdrop-blur-sm hover:shadow-md'
+TEMPLATE GUIDELINES:
+1. Navigation:
+   - Always include responsive navigation
+   - Use template.components.navigation patterns
+   - Include mobile menu toggle
 
-3. Card Patterns:
-- Feature cards: Use template.components.cards.feature with 'group' animations
-- Blog cards: Use template.components.cards.default with hover lift
-- Team cards: Use template.components.cards.interactive with perspective
+2. Hero Sections:
+   - Full-width design
+   - Responsive text sizing
+   - Clear call-to-action
+   - Optional background image/pattern
 
-4. Navigation & Headers:
-- Sticky headers: Use template.components.navigation.default
-- Hero overlays: Use template.components.navigation.transparent
-- Colored headers: Use template.components.navigation.colored
+3. Content Sections:
+   - Consistent padding/margins
+   - Grid/Flex for layout
+   - Responsive breakpoints
+   - Proper heading hierarchy
 
-5. Visual Effects:
-- Glass morphism: 'bg-white/80 backdrop-blur-sm'
-- Gradient overlays: 'bg-gradient-to-r from-{color}-500/10 to-{color}-600/10'
-- Shadow transitions: 'hover:shadow-lg transition-shadow duration-300'
-- Scale effects: 'hover:scale-105 transition-transform duration-200'
+4. Interactive Elements:
+   - Hover/focus states
+   - Smooth transitions
+   - Accessible buttons/links
+   - Loading states
 
-6. Responsive Patterns:
-- Mobile-first approach with sm:, md:, lg: prefixes
-- Stack on mobile, grid/flex on larger screens
-- Adjust text sizes across breakpoints
-- Hide/show elements based on screen size
+TAILWIND PATTERNS:
+1. Layout:
+   - Container: "container mx-auto px-4"
+   - Grid: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+   - Stack: "space-y-4 md:space-y-6"
 
-7. Animation Combinations:
-- Hover + Active: 'hover:scale-105 active:scale-95 transition-all duration-200'
-- Group + Transform: 'group-hover:scale-105 group-hover:rotate-3'
-- Entry + Continuous: 'fade-in animate-pulse-subtle'
+2. Components:
+   - Cards: "group rounded-lg bg-white shadow-md hover:shadow-xl transition-all"
+   - Buttons: "px-6 py-3 rounded-lg font-medium transition-all"
+   - Images: "w-full h-full object-cover rounded-lg"
 
-Then create modern, responsive web designs using semantic Tailwind classes and modern design patterns:
+3. Typography:
+   - Headings: "text-3xl md:text-4xl lg:text-5xl font-bold"
+   - Body: "text-base md:text-lg text-gray-600"
+   - Links: "text-primary hover:text-primary-dark transition-colors"
 
-1. Layout & Structure:
-- Use semantic HTML5 elements (header, nav, main, section, article, footer)
-- Implement responsive grid/flexbox layouts with Tailwind
-- Create mobile-first designs with responsive classes
-- Use proper heading hierarchy and ARIA labels
+ERROR HANDLING:
+1. Always include fallback classes
+2. Use optional chaining for dynamic content
+3. Provide alt text for images
+4. Include ARIA labels for accessibility
 
-2. Modern Components:
-- Implement sticky headers with blur effects
-- Add hover and focus states with smooth transitions
-- Use gradient backgrounds and text
-- Include micro-interactions and animations
-- Implement modern card designs with hover effects
+RESPONSIVE DESIGN:
+1. Mobile-first approach
+2. Use standard breakpoints: sm, md, lg, xl
+3. Stack on mobile, grid on larger screens
+4. Adjust text sizes across breakpoints
 
-3. Visual Design:
-- Use modern color combinations and gradients
-- Implement consistent spacing with Tailwind
-- Add subtle shadows and depth
-- Use modern typography with proper hierarchy
-- Include white space for readability
+OUTPUT FORMAT:
+1. Return complete HTML document
+2. Include TailwindCSS CDN
+3. Add required meta tags
+4. Include Font Awesome for icons
 
-4. Interactions & Animations:
-- Add hover transitions (scale, shadow, color)
-- Implement scroll animations
-- Use loading states and transitions
-- Add micro-interactions for buttons
-- Include smooth page transitions
-
-5. Responsive Patterns:
-- Mobile-first approach
-- Proper breakpoint usage
-- Flexible images and media
-- Responsive typography
-- Adaptive layouts
-
-6. Performance & Accessibility:
-- Semantic HTML structure
-- ARIA labels and roles
-- Proper color contrast
-- Keyboard navigation support
-- Loading optimizations
-
-1. Content:
-- Use meaningful, specific content tailored to the theme
-- Generate real headlines and descriptions
-- Replace placeholders with realistic details
-
-2. Design:
-- Use semantic HTML5 and responsive Tailwind CSS
-- Create a sticky header with blur effect backdrop
-- Implement mobile-responsive menu with hamburger
-- Add smooth hover animations and transitions
-- Ensure proper spacing and visual hierarchy
-
-3. Technical:
-- Use proper HTML structure and semantic elements
-- Implement responsive breakpoints
-- Add hover states and transitions
+Remember to:
+- Use template colors and fonts if provided
+- Implement proper spacing hierarchy
+- Add subtle animations/transitions
 - Ensure accessibility compliance
-- Include proper meta tags
-
-4. Style:
-- Follow template color scheme
-- Maintain consistent typography
-- Use proper spacing hierarchy
-- Add subtle animations
-- Ensure visual harmony
-
-5. Navigation:
-- Sticky header with blur effect backdrop
-- Mobile-responsive menu with hamburger
-- Smooth hover animations
-- Proper spacing and alignment
-- Call-to-action button
-- Responsive breakpoints
-
-${previousDesign ? `Previous Design Context:
-${previousDesign}
-
-Important:
-- Preserve overall structure
-- Only modify requested changes
-- Keep existing content unless specified
-- Maintain template guidelines` : ''}
-
-Example Implementation:
-
-<!-- Modern Card Component -->
-<div class="group relative overflow-hidden rounded-xl bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 fade-in">
-  <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-  <img src="IMAGE_URL_PLACEHOLDER" alt="Feature image" class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300">
-  <div class="p-6">
-    <h3 class="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Feature Title</h3>
-    <p class="mt-2 text-gray-600">Feature description with modern styling and attention to detail.</p>
-    <button class="mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:shadow-lg hover:scale-105 active:scale-95 transform transition-all duration-200">
-      Learn More
-    </button>
-  </div>
-</div>`;
-
-    let messages = [
-      { role: "system", content: systemPrompt }
-    ];
-
-    // If there's a reference image, add it to the conversation
-    if (referenceImage) {
-      const processedImage = await processImageInput(referenceImage);
-      messages.push({
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Here's a reference image for the design style I'm looking for:"
-          },
-          {
-            type: "image",
-            image_url: processedImage
-          }
-        ]
-      });
-    }
-
-    // Add the main design request
-    const userPrompt = `As an expert web designer, create a modern, visually striking webpage based on this description: "${text}"${referenceImage ? " incorporating elements and style inspiration from the reference image provided" : ""}.
-    
-    Template Information:
-    Name: ${template.name}
-    Category: ${template.id}
-    Required Sections: ${template.defaultContent.sections.join(', ')}
-    Color Scheme: ${template.defaultContent.style.colors.join(', ')}
-    Font Stack: ${template.defaultContent.style.fonts.join(', ')}
-    
-    Template Guidelines:
-    1. Structure:
-       - Implement ALL required sections in the specified order
-       - Each section must be clearly defined with semantic HTML5 elements
-       - Maintain consistent spacing and padding between sections
-    
-    2. Styling:
-       - Use ONLY the provided color scheme
-       - Apply the specified font stack for typography
-       - Ensure consistent styling patterns throughout the page
-    
-    3. Content Requirements:
-       - Generate SPECIFIC, RELEVANT content based on the user's request
-       - NO lorem ipsum or generic placeholder text
-       - Write compelling headlines that directly address the user's needs
-       - Create engaging descriptions that match the business/purpose
-       - Include realistic details (e.g., actual features, benefits, or testimonials)
-       - Ensure all content feels authentic and purposeful
-       
-    4. Response Style:
-       - Analyze the user's request and provide a contextual, friendly response
-       - Highlight specific design choices made based on their requirements
-       - Point out how the design elements support their goals
-       - Suggest potential refinements or alternatives they might consider
-       - Make the response personal and relevant to their specific case
-
-    Return only the raw HTML with embedded styles. No markdown or code blocks.
-    
-    For the AI response message, create a personalized message that:
-    1. Acknowledges their specific request
-    2. Highlights key design decisions made
-    3. Points out how the design supports their goals
-    4. Suggests potential refinements they might consider
-    5. Invites feedback on specific aspects`;
+- Include proper meta tags`;
 
     const completion = await client.chat.completions.create({
-      temperature: 0,
+      temperature: 0.5,
+      max_tokens: 1000,
       model: "Qwen/Qwen2-VL-7B-Instruct",
       messages: [
         { role: "system", content: systemPrompt },
@@ -340,118 +192,150 @@ Example Implementation:
       ]
     });
 
-    console.log('Received AI response:', {
-      model: completion.model,
-      usage: completion.usage,
-      finishReason: completion.choices[0].finish_reason
-    });
+    // Extract AI response message
+    const funnyMessages = [
+      "Design magic complete! Here's what I created...",
+      "Fresh design served! Take a look...",
+      "Design ready for launch! Check it out...",
+      "Design crafted with care! What do you think..."
+    ];
+    const aiResponse = funnyMessages[Math.floor(Math.random() * funnyMessages.length)];
 
-    // Get the raw HTML from LLaMA
-    let html = completion.choices[0].message.content.replace(/```html|```/g, '').trim();
-
-    // Replace image placeholders with template images
-    let imageIndex = 0;
-    html = html.replace(/<!-- GENERATE_IMAGE: (.*?) -->\s*<img[^>]*>|<img[^>]*src="IMAGE_URL_PLACEHOLDER"[^>]*>/g, (match, description) => {
-      let imageUrl;
-      let altText = description || "Template image";
-      
-      // Select appropriate image based on context and description
-      if (match.toLowerCase().includes('hero') || (description && description.toLowerCase().includes('hero'))) {
-        imageUrl = template.images.hero;
-      } else if (description && description.toLowerCase().includes('team') && template.images.team) {
-        imageUrl = template.images.team[imageIndex % template.images.team.length];
-      } else if (description && description.toLowerCase().includes('service') && template.images.services) {
-        imageUrl = template.images.services[imageIndex % template.images.services.length];
-      } else if (description && description.toLowerCase().includes('project') && template.images.projects) {
-        imageUrl = template.images.projects[imageIndex % template.images.projects.length];
-      } else if (template.images.features && imageIndex < template.images.features.length) {
-        imageUrl = template.images.features[imageIndex];
-      } else {
-        imageUrl = template.images.about || template.previewImage;
-      }
-      
-      if (!imageUrl) {
-        console.warn('No image URL found for template section, using preview image');
-        imageUrl = template.previewImage;
-      }
-
-      console.log('Using image:', imageUrl, 'for description:', description || 'default image');
-      
-      imageIndex++;
-      return `<img src="${imageUrl}" alt="${altText}" class="w-full h-[300px] object-cover rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">`;
-    });
-
-    // Verify all IMAGE_URL_PLACEHOLDER have been replaced
-    if (html.includes('IMAGE_URL_PLACEHOLDER')) {
-      console.warn('Found remaining IMAGE_URL_PLACEHOLDER in HTML after replacement');
-      // Replace any remaining placeholders with the preview image
-      html = html.replace(/IMAGE_URL_PLACEHOLDER/g, template.previewImage);
-    }
-
-    const firstImageUrl = template.previewImage;
-
-    // Extract AI response message if present in a comment
-    const aiResponseMatch = completion.choices[0].message.content.match(/<!-- AI Response: (.*?) -->/s);
-    let aiResponse;
-    
-    if (aiResponseMatch) {
-      // Remove any HTML/style tags from the response
-      aiResponse = aiResponseMatch[1].replace(/<[^>]*>/g, '').trim();
+    // Extract HTML content
+    let html = completion.choices[0].message.content;
+    const htmlStartIndex = html.indexOf('<!DOCTYPE html>');
+    if (htmlStartIndex === -1) {
+      html = html.replace(/```html\n|```\n|```/g, '').trim();
     } else {
-      // Fallback to first non-HTML line if no comment
-      aiResponse = completion.choices[0].message.content
-        .split('\n')
-        .find(line => !line.includes('<') && !line.includes('>') && line.trim())
-        ?.trim() || "I've created your design based on your requirements. Let me know if you'd like any adjustments.";
+      html = html.substring(htmlStartIndex);
+    }
+    
+    if (!html) {
+      throw new Error('No HTML content received from AI');
     }
 
-    // Extract CSS from the response if present
-    const cssMatch = html.match(/\/\* styles\.css \*\/([\s\S]*?)(?=<|$)/);
-    const css = cssMatch ? cssMatch[1].trim() : '';
-    
-    // Remove the CSS from the HTML
-    html = html.replace(/\/\* styles\.css \*\/[\s\S]*?(?=<|$)/, '');
+    html = replaceImagePlaceholders(html, template);    
 
-    const htmlWithStyles = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script src="https://cdn.tailwindcss.com"></script>
-          <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-          <style>
-            ${css}
-            body {
-              font-family: 'Montserrat', system-ui, sans-serif;
-              line-height: 1.5;
-              margin: 0;
-              padding: 0;
-            }
-            .container {
-              max-width: 1200px;
-              margin: 0 auto;
-              padding: 2rem;
-            }
-          </style>
-        </head>
-        <body>
-          ${html}
-        </body>
-      </html>`;
+    const htmlWithStyles = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Generated with WebWeaver AI">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  
+  <!-- Error Handling -->
+  <script>
+    window.onerror = function(msg, url, line) {
+      console.error('JavaScript error:', msg, 'at line:', line);
+      return false;
+    };
+    
+    // Handle Tailwind Loading
+    document.addEventListener('DOMContentLoaded', function() {
+      if (!window.tailwind) {
+        document.body.innerHTML = '<div class="p-4 bg-red-100 text-red-700">Error: Tailwind failed to load</div>' + document.body.innerHTML;
+      }
+    });
+  </script>
+
+  <!-- Dynamic Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: ${template ? JSON.stringify({
+            primary: template.defaultContent.style.colors[0],
+            secondary: template.defaultContent.style.colors[1],
+            accent: template.defaultContent.style.colors[2]
+          }) : `{
+            primary: '#3b82f6',
+            secondary: '#64748b',
+            accent: '#f59e0b'
+          }`},
+          fontFamily: ${template ? JSON.stringify({
+            sans: template.defaultContent.style.fonts
+          }) : `{
+            sans: ['Inter', 'system-ui']
+          }`}
+        }
+      }
+    }
+  </script>
+
+  <!-- Base Styles -->
+  <style>
+    /* Reset */
+    body { margin: 0; padding: 0; min-height: 100vh; }
+    * { transition: all 0.2s ease-in-out; }
+
+    /* Fallback Styles */
+    .fallback-bg { background-color: #f8fafc; }
+    .fallback-text { color: #1e293b; }
+    
+    /* Loading States */
+    .loading-skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+    
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body class="bg-white min-h-screen font-sans antialiased">
+  <!-- Error Boundary -->
+  <div id="error-container" class="hidden fixed top-0 left-0 right-0 bg-red-100 text-red-700 p-4 text-center"></div>
+  
+  <!-- Main Content -->
+  <div class="w-full">
+    ${html}
+  </div>
+
+  <!-- Fallback Content -->
+  <div id="fallback-content" class="hidden p-8">
+    <div class="max-w-2xl mx-auto text-center">
+      <h2 class="text-2xl font-bold mb-4">Something went wrong</h2>
+      <p class="text-gray-600">Please try refreshing the page or contact support if the problem persists.</p>
+    </div>
+  </div>
+
+  <!-- Error Handling Script -->
+  <script>
+    function handleError(error) {
+      console.error('Runtime error:', error);
+      document.getElementById('error-container').classList.remove('hidden');
+      document.getElementById('error-container').textContent = 'An error occurred: ' + error.message;
+    }
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleError);
+
+    // Handle missing images
+    document.addEventListener('error', function(e) {
+      if (e.target.tagName === 'IMG') {
+        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23f3f4f6"/%3E%3Ctext x="50" y="50" font-family="system-ui" font-size="12" fill="%236b7280" text-anchor="middle" dy=".3em"%3EImage not found%3C/text%3E%3C/svg%3E';
+        e.target.classList.add('fallback-bg');
+      }
+    }, true);
+  </script>
+</body>
+</html>`;
 
     res.json({
-      aiResponse: aiResponse,
+      aiResponse: funnyMessages[Math.floor(Math.random() * funnyMessages.length)],
       html: htmlWithStyles,
-      imageUrl: firstImageUrl,
+      imageUrl: template?.previewImage || 'https://via.placeholder.com/800x600?text=Preview',
       designChoices: {
         layout: completion.choices[0].message.content.match(/<!-- Layout: (.*?) -->/)?.[1] || '',
         colors: completion.choices[0].message.content.match(/<!-- Colors: (.*?) -->/)?.[1] || '',
         features: completion.choices[0].message.content.match(/<!-- Features: (.*?) -->/)?.[1] || ''
       }
     });
-
   } catch (error) {
     console.error('Error processing request:', error);
     res.status(500).json({ 
@@ -461,7 +345,7 @@ Example Implementation:
   }
 });
 
-// Add error handling middleware
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(500).json({ 
@@ -470,6 +354,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Start server
 const server = app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 }).on('error', (err) => {
@@ -477,7 +362,7 @@ const server = app.listen(port, () => {
   process.exit(1);
 });
 
-// Handle graceful shutdown
+// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
   server.close(() => {
