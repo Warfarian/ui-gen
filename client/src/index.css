@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Base Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -13,6 +14,44 @@
   }
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Animation Classes */
 .fade-in {
   animation: fadeIn 0.6s ease-out forwards;
 }
@@ -27,3 +66,162 @@
   opacity: 0;
 }
 
+.slide-in-right {
+  animation: slideInRight 0.6s ease-out forwards;
+}
+
+.pop-in {
+  animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger Animations */
+.fade-in-stagger > * {
+  opacity: 0;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.fade-in-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+.fade-in-stagger > *:nth-child(2) { animation-delay: 0.2s; }
+.fade-in-stagger > *:nth-child(3) { animation-delay: 0.3s; }
+.fade-in-stagger > *:nth-child(4) { animation-delay: 0.4s; }
+.fade-in-stagger > *:nth-child(5) { animation-delay: 0.5s; }
+
+/* Interactive Elements */
+.hover-lift {
+  @apply transition-all duration-300;
+}
+
+.hover-lift:hover {
+  @apply -translate-y-1 shadow-lg;
+}
+
+.hover-scale {
+  @apply transition-transform duration-300;
+}
+
+.hover-scale:hover {
+  @apply scale-105;
+}
+
+/* Glass Morphism */
+.glass {
+  @apply bg-white/80 backdrop-blur-sm;
+}
+
+.glass-dark {
+  @apply bg-gray-900/80 backdrop-blur-sm;
+}
+
+/* Gradient Text */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r;
+}
+
+.gradient-text-primary {
+  @apply gradient-text from-blue-600 to-purple-600;
+}
+
+.gradient-text-secondary {
+  @apply gradient-text from-teal-500 to-emerald-500;
+}
+
+/* Card Interactions */
+.card-hover {
+  @apply transition-all duration-300 ease-out;
+}
+
+.card-hover:hover {
+  @apply shadow-xl -translate-y-1;
+}
+
+/* Button Animations */
+.button-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .7;
+  }
+}
+
+/* Loading States */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Scroll Animations */
+.scroll-fade {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease-out;
+}
+
+.scroll-fade.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Progress Animations */
+@keyframes progressFill {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--progress-width, 100%);
+  }
+}
+
+.progress-bar {
+  animation: progressFill 1s ease-out forwards;
+}
+
+/* Masonry Grid */
+.masonry-grid {
+  @apply columns-1 sm:columns-2 lg:columns-3 gap-4;
+}
+
+.masonry-grid > * {
+  @apply mb-4 break-inside-avoid;
+}
+
+/* Responsive Typography */
+@responsive {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .glass {
+    @apply bg-gray-900/80;
+  }
+  
+  .glass-dark {
+    @apply bg-black/80;
+  }
+}

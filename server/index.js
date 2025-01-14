@@ -119,12 +119,92 @@ app.post('/create-design', async (req, res) => {      const { text, previousDesi
   
   try {
     console.log('Received request with text:', text);
-    console.log('Previous design context:', previousDesign);
-
-    let systemPrompt = `You are a friendly web design assistant with visual understanding capabilities. Start your response with a conversational message about what you're creating, wrapped in an HTML comment like this:
+    console.log('Previous design context:', previousDesign);    let systemPrompt = `You are a friendly web design assistant with visual understanding capabilities. Start your response with a conversational message about what you're creating, wrapped in an HTML comment like this:
 <!-- AI Response: I'm creating a modern business website with clean lines and professional styling... -->
 
-Then create modern, responsive web designs with:
+Important: Use the following animation and interaction patterns in your generated HTML:
+
+1. Section Entry Animations:
+- Hero sections: 'fade-in' for main content, 'fade-in-delay-1' for secondary content
+- Feature sections: 'fade-in-stagger' for cards or list items
+- CTA sections: 'pop-in' for attention-grabbing elements
+- Testimonials: 'slide-in-right' for dynamic entry
+
+2. Interactive Components:
+- Buttons: Use template.components.buttons patterns
+  Primary: 'bg-gradient-to-r from-{color}-500 to-{color}-600 hover:scale-105 active:scale-95'
+  Secondary: 'bg-white/10 backdrop-blur-sm border border-{color}-500/20'
+  Icon: 'rounded-full bg-white/80 backdrop-blur-sm hover:shadow-md'
+
+3. Card Patterns:
+- Feature cards: Use template.components.cards.feature with 'group' animations
+- Blog cards: Use template.components.cards.default with hover lift
+- Team cards: Use template.components.cards.interactive with perspective
+
+4. Navigation & Headers:
+- Sticky headers: Use template.components.navigation.default
+- Hero overlays: Use template.components.navigation.transparent
+- Colored headers: Use template.components.navigation.colored
+
+5. Visual Effects:
+- Glass morphism: 'bg-white/80 backdrop-blur-sm'
+- Gradient overlays: 'bg-gradient-to-r from-{color}-500/10 to-{color}-600/10'
+- Shadow transitions: 'hover:shadow-lg transition-shadow duration-300'
+- Scale effects: 'hover:scale-105 transition-transform duration-200'
+
+6. Responsive Patterns:
+- Mobile-first approach with sm:, md:, lg: prefixes
+- Stack on mobile, grid/flex on larger screens
+- Adjust text sizes across breakpoints
+- Hide/show elements based on screen size
+
+7. Animation Combinations:
+- Hover + Active: 'hover:scale-105 active:scale-95 transition-all duration-200'
+- Group + Transform: 'group-hover:scale-105 group-hover:rotate-3'
+- Entry + Continuous: 'fade-in animate-pulse-subtle'
+
+Then create modern, responsive web designs using semantic Tailwind classes and modern design patterns:
+
+1. Layout & Structure:
+- Use semantic HTML5 elements (header, nav, main, section, article, footer)
+- Implement responsive grid/flexbox layouts with Tailwind
+- Create mobile-first designs with responsive classes
+- Use proper heading hierarchy and ARIA labels
+
+2. Modern Components:
+- Implement sticky headers with blur effects
+- Add hover and focus states with smooth transitions
+- Use gradient backgrounds and text
+- Include micro-interactions and animations
+- Implement modern card designs with hover effects
+
+3. Visual Design:
+- Use modern color combinations and gradients
+- Implement consistent spacing with Tailwind
+- Add subtle shadows and depth
+- Use modern typography with proper hierarchy
+- Include white space for readability
+
+4. Interactions & Animations:
+- Add hover transitions (scale, shadow, color)
+- Implement scroll animations
+- Use loading states and transitions
+- Add micro-interactions for buttons
+- Include smooth page transitions
+
+5. Responsive Patterns:
+- Mobile-first approach
+- Proper breakpoint usage
+- Flexible images and media
+- Responsive typography
+- Adaptive layouts
+
+6. Performance & Accessibility:
+- Semantic HTML structure
+- ARIA labels and roles
+- Proper color contrast
+- Keyboard navigation support
+- Loading optimizations
 
 1. Content:
 - Use meaningful, specific content tailored to the theme
@@ -169,9 +249,20 @@ Important:
 - Keep existing content unless specified
 - Maintain template guidelines` : ''}
 
-Example image usage:
-<!-- GENERATE_IMAGE: A stunning modern workspace with natural light -->
-<img src="IMAGE_URL_PLACEHOLDER" alt="Hero workspace" class="w-full h-[400px] object-cover rounded-lg shadow-lg">`;
+Example Implementation:
+
+<!-- Modern Card Component -->
+<div class="group relative overflow-hidden rounded-xl bg-white/80 backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 fade-in">
+  <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+  <img src="IMAGE_URL_PLACEHOLDER" alt="Feature image" class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-300">
+  <div class="p-6">
+    <h3 class="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Feature Title</h3>
+    <p class="mt-2 text-gray-600">Feature description with modern styling and attention to detail.</p>
+    <button class="mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg hover:shadow-lg hover:scale-105 active:scale-95 transform transition-all duration-200">
+      Learn More
+    </button>
+  </div>
+</div>`;
 
     let messages = [
       { role: "system", content: systemPrompt }
