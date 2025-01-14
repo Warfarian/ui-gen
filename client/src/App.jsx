@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import DOMPurify from 'dompurify'
-import CodeMirror from '@uiw/react-codemirror'
-import { html } from '@codemirror/lang-html'
-import { basicSetup } from '@uiw/codemirror-extensions-basic-setup'
+import Editor from '@monaco-editor/react'
+import { monacoConfig, defineThemes } from './config/monaco'
 import TemplateSelector from './components/TemplateSelector'
 import LandingPage from './components/LandingPage'
 import Learning from './components/Learning'
@@ -12,11 +11,25 @@ import Learning from './components/Learning'
 const Builder = () => {
   const [isListening, setIsListening] = useState(false);
   const [design, setDesign] = useState(null);
+  const [previewMode, setPreviewMode] = useState('desktop');
+
+  // Helper function to get preview width based on mode
+  const getPreviewWidth = () => {
+    switch (previewMode) {
+      case 'mobile':
+        return 'max-w-[375px]';
+      case 'tablet':
+        return 'max-w-[768px]';
+      default:
+        return 'w-full';
+    }
+  };
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [generatedHtml, setGeneratedHtml] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [editorTheme, setEditorTheme] = useState('custom-dark');
   const [textInput, setTextInput] = useState('');
 
   const handleTextSubmit = async () => {
@@ -123,7 +136,9 @@ const Builder = () => {
           <html>
             <head>
               <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+              <meta name="theme-color" content="#ffffff">
+              <meta name="color-scheme" content="light dark">
               <script src="https://cdn.tailwindcss.com"></script>
               <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
               <style>
@@ -174,7 +189,7 @@ const Builder = () => {
       }
       
       setMessages(prev => [...prev, { type: 'bot', text: errorMessage }]);
-      console.log('Server URL:', 'http://localhost:3001/create-design'); // Add logging
+      console.log('Server URL:', 'http://localhost:3001/create-design');
     } finally {
       setIsLoading(false);
     }
@@ -290,32 +305,184 @@ const Builder = () => {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-gray-100">
               <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Design Preview</h2>
-              <button
-                onClick={() => setShowCode(!showCode)}
-                className="px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
-              >
-                {showCode ? 'Hide Code' : 'View Code'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowCode(!showCode)}
+                  className="px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
+                >
+                  {showCode ? 'Hide Code' : 'View Code'}
+                </button>
+                {showCode && (
+                  <button
+                    onClick={() => setEditorTheme(theme => theme === 'custom-dark' ? 'custom-light' : 'custom-dark')}
+                    className="px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
+                  >
+                    {editorTheme === 'custom-dark' ? '☀️ Light' : '🌙 Dark'}
+                  </button>
+                )}
+              </div>
             </div>
             
-            <div className="border rounded-lg p-4 bg-white mb-4">
-              <iframe
-                srcDoc={generatedHtml}
-                className="w-full min-h-[800px] border-0"
-                title="Generated UI Preview"
-                sandbox="allow-scripts allow-same-origin"
-              />
+            <div className="space-y-4">
+              {/* Preview Controls */}
+              <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-lg font-semibold text-gray-700">Preview</h3>
+                  <div className="flex items-center gap-2 border-l pl-4">
+                    <button
+                      onClick={() => setPreviewMode('desktop')}
+                      className={`p-2 rounded ${previewMode === 'desktop' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      title="Desktop View"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('tablet')}
+                      className={`p-2 rounded ${previewMode === 'tablet' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      title="Tablet View"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('mobile')}
+                      className={`p-2 rounded ${previewMode === 'mobile' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      title="Mobile View"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([generatedHtml], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, '_blank');
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                  >
+                    Open in New Tab
+                  </button>
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([generatedHtml], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'generated-design.html';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                  >
+                    Download HTML
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview Frame */}
+              <div className="border rounded-lg bg-white overflow-hidden">
+                <div className="border-b border-gray-200 p-2 bg-gray-50 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  </div>
+                  <div className="text-sm text-gray-500 font-mono bg-white px-3 py-1 rounded border">
+                    preview.html
+                  </div>
+                </div>
+                <div className={`transition-all duration-300 mx-auto ${getPreviewWidth()}`}>
+                  <iframe
+                    srcDoc={generatedHtml}
+                    className="w-full min-h-[800px] border-0"
+                    style={{
+                      height: previewMode === 'mobile' ? '667px' : 
+                             previewMode === 'tablet' ? '1024px' : 
+                             '800px'
+                    }}
+                    title="Generated UI Preview"
+                    sandbox="allow-scripts allow-same-origin"
+                    onLoad={(e) => {
+                      try {
+                        // Inject custom styles for preview
+                        const style = e.target.contentDocument.createElement('style');
+                        style.textContent = `
+                          * { transition: all 0.2s ease-in-out; }
+                          .hover-highlight:hover { outline: 2px solid #3b82f6; }
+                        `;
+                        e.target.contentDocument.head.appendChild(style);
+
+                        // Add hover highlight to elements
+                        const elements = e.target.contentDocument.querySelectorAll('div, section, article, nav, header, footer');
+                        elements.forEach(el => el.classList.add('hover-highlight'));
+                      } catch (error) {
+                        console.error('Error injecting preview styles:', error);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
             {showCode && (
               <div className="border rounded-lg overflow-hidden bg-white">
-                <CodeMirror
-                  value={generatedHtml}
+                <Editor
                   height="400px"
-                  extensions={[html(), basicSetup()]}
-                  readOnly
-                  className="w-full border rounded code-mirror-custom"
-                  theme="dark"
+                  defaultLanguage="html"
+                  value={generatedHtml}
+                  options={monacoConfig.editor}
+                  theme={editorTheme}
+                  beforeMount={(monaco) => {
+                    // Define custom themes
+                    defineThemes(monaco);
+                    // Register HTML language features
+                    monaco.languages.html.htmlDefaults.setOptions(monacoConfig.html);
+                    
+                    // Register custom completions
+                    monaco.languages.registerCompletionItemProvider('html', {
+                      provideCompletionItems: (model, position) => {
+                        return {
+                          suggestions: [
+                            // Add class attribute suggestion
+                            {
+                              label: 'class',
+                              kind: monaco.languages.CompletionItemKind.Property,
+                              documentation: 'HTML class attribute',
+                              insertText: 'class="${1}"',
+                              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                              range: {
+                                startLineNumber: position.lineNumber,
+                                endLineNumber: position.lineNumber,
+                                startColumn: position.column,
+                                endColumn: position.column
+                              },
+                            },
+                            // Add Tailwind class suggestions
+                            ...monacoConfig.tailwindClasses.map(className => ({
+                              label: className,
+                              kind: monaco.languages.CompletionItemKind.Value,
+                              documentation: `Tailwind class: ${className}`,
+                              insertText: className,
+                              range: {
+                                startLineNumber: position.lineNumber,
+                                endLineNumber: position.lineNumber,
+                                startColumn: position.column,
+                                endColumn: position.column
+                              },
+                            }))
+                          ]
+                        };
+                      }
+                    });
+                  }}
                 />
               </div>
             )}
@@ -323,14 +490,13 @@ const Builder = () => {
         )}
       </div>
     </div>
-  )
+  );
 };
 
 // New App component with routing
 function App() {
   return (
     <Router>
-
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/builder" element={<Builder />} />
