@@ -7,10 +7,23 @@ import ElevenLabs from 'elevenlabs-node';
 
 dotenv.config();
 const IMAGE_API_URL = 'https://magicloops.dev/api/loop/0e90271e-dd9d-4745-b253-a82ef4286126/run';
-const voice = new ElevenLabs({
-  apiKey: process.env.ELEVENLABS_API_KEY,
-  voiceId: process.env.ELEVENLABS_VOICE_ID
-});
+// Initialize ElevenLabs with error checking
+const initializeElevenLabs = () => {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const voiceId = process.env.ELEVENLABS_VOICE_ID;
+  
+  if (!apiKey || !voiceId) {
+    console.error('Missing required ElevenLabs configuration. Please check your .env file.');
+    return null;
+  }
+  
+  return new ElevenLabs({
+    apiKey: apiKey,
+    voiceId: voiceId
+  });
+};
+
+const voice = initializeElevenLabs();
 const app = express();
 const port = 3001;
 
@@ -30,6 +43,13 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Voice synthesis endpoint
 app.post('/synthesize-voice', async (req, res) => {
   try {
+    if (!voice) {
+      return res.status(500).json({ 
+        error: 'Voice synthesis service not configured',
+        details: 'Missing API credentials. Please check server configuration.'
+      });
+    }
+
     const { text } = req.body;
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
@@ -296,20 +316,9 @@ I'll add the phone and gender fields to your form! ✨`;
   </style>
 </head>
 <body class="bg-white min-h-screen font-sans antialiased">
-  <!-- Error Boundary -->
-  <div id="error-container" class="hidden fixed top-0 left-0 right-0 bg-red-100 text-red-700 p-4 text-center"></div>
-  
   <!-- Main Content -->
   <div class="w-full">
     ${html}
-  </div>
-
-  <!-- Fallback Content -->
-  <div id="fallback-content" class="hidden p-8">
-    <div class="max-w-2xl mx-auto text-center">
-      <h2 class="text-2xl font-bold mb-4">Something went wrong</h2>
-      <p class="text-gray-600">Please try refreshing the page or contact support if the problem persists.</p>
-    </div>
   </div>
 
   <!-- Error Handling Script -->
