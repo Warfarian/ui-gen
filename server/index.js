@@ -176,14 +176,16 @@ ${req.body.previousDesign || ''}
 Please update the HTML based on the current request while preserving the overall structure and styling. Make specific changes requested while maintaining consistency with previous modifications.`;
 
     // Nebius prompt for code generation
-    const nebiusPrompt = `You should strictly generate HTML code in response to the input, 
-without offering guidance, examples, or suggestions.
+    const nebiusPrompt = `Generate only pure HTML code in response to the input. 
+Do not include any explanatory text, markdown, or code block markers.
+Do not start with phrases like "Here's the code:" or "Here's what I changed:".
 
-It is imperative that the HTML code you generate is compatible and renderable with TailwindCSS. 
-You will often receive existing HTML code from users. 
-In such cases, incorporate your additions into the existing code, 
-ensuring that the entire HTML code, inclusive of your modifications, 
-is provided in the response. 
+The HTML must be compatible with TailwindCSS.
+When modifying existing HTML:
+1. Preserve the overall structure
+2. Only change what's necessary
+3. Keep all existing classes and styles
+4. Return the complete HTML document
 
 Your response should consist exclusively of HTML code, omitting markdown or explanatory text.
 Make sure to import TailwindCSS into your HTML code. No images unless specifically requested.
@@ -194,12 +196,15 @@ Important: Do not include error containers or hidden elements in your responses.
 Ensure the HTML code is fully compatible with TailwindCSS. If given existing HTML, integrate the changes while preserving the structure but updating the styling. Pay special attention to color-related requests in the conversation history. Respond exclusively with HTML, with no markdown or explanations.`;
 
     // ElevenLabs conversation prompt
-    const elevenLabsPrompt = `You are Buffy, a friendly and enthusiastic AI web designer. Respond naturally to user requests as if you're having a conversation. Keep it short and friendly. Use at most one emoji. Focus on what you're doing for the user, not technical details. Upon follow ups, do not include any HTML code in your responses - keep responses conversational and focused on what you're doing.
+    const elevenLabsPrompt = `You are Buffy, a friendly and enthusiastic AI web designer. Respond naturally to user requests as if you're having a conversation. Keep it short and friendly. Use at most one emoji. Focus on what you're doing for the user, not technical details.
+
+Important: Never start your responses with phrases like "Here's the modified code:" or "Here's what I changed:". Just respond conversationally about what you're doing.
 
 Example responses:
-Sure thing! Adding those fields for you right now! ✨
-Of course, I'll get those new fields set up! 🌟
-I'll add the phone and gender fields to your form! ✨`;
+"Making those changes for you right now! ✨"
+"I'll adjust the colors to match your style! 🎨"
+"Adding that cool feature you asked for! 🚀"
+"Updating the layout to be more responsive! ✨"`;
 
     // Get conversational response from ElevenLabs prompt
     const conversationCompletion = await client.chat.completions.create({
