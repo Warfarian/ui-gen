@@ -1,6 +1,6 @@
 const Learning = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-pastel-blue via-pastel-lavender to-pastel-pink relative overflow-hidden">
       <div className="container mx-auto px-6 py-12 max-w-6xl fade-in">
         {/* Background Decorative Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -8,31 +8,33 @@ const Learning = () => {
           <div className="absolute bottom-1/4 -right-48 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
         </div>
 
-        <h1 className="text-5xl font-extrabold mb-8 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent text-center relative">
-          Master UI/UX Design
-          <span className="block text-lg font-medium text-gray-600 mt-2">Comprehensive guide to modern design principles</span>
+        <h1 className="text-7xl font-teko mb-8 text-center relative">
+          <span className="bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent drop-shadow-lg">
+            Master UI/UX Design
+          </span>
+          <span className="block text-2xl text-gray-700 mt-2 drop-shadow">Where pixels meet purpose, and bugs become features</span>
         </h1>
 
         {/* Introduction */}
-        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg mb-12">
+        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg mb-12 border border-pastel-blue/30">
           <p className="text-gray-700 leading-relaxed">
-            UI (User Interface) and UX (User Experience) design are critical components in creating effective digital products. 
-            They focus on how users interact with a product and how satisfying that interaction is. Understanding these principles 
-            can significantly enhance user engagement and satisfaction.
+            Welcome to the world of UI/UX design, where we turn "404 Not Found" into "404 Too Cool to Exist". 
+            Here's where you'll learn to create interfaces so intuitive, even your grandma could launch a rocket ship. 
+            We'll explore the art of making digital products that don't just work - they work it. 🚀
           </p>
         </div>
         
         {/* Main Grid */}
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           {/* UI Design Section */}
-          <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg transform hover:scale-[1.02] transition-all">
+          <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg transform hover:scale-[1.02] transition-all border border-pastel-lavender/30">
             <h2 className="text-3xl font-bold mb-6 text-blue-600">UI Design</h2>
             <div className="space-y-4">
               <p className="text-gray-700">UI design refers to the visual elements of a product, including buttons, icons, spacing, typography, and color schemes.</p>
               
-              <div className="bg-blue-50 p-6 rounded-xl">
-                <h3 className="font-semibold text-blue-800 mb-3">Key Aspects:</h3>
-                <ul className="space-y-2 text-blue-700">
+              <div className="bg-pastel-blue/20 p-6 rounded-xl">
+                <h3 className="font-teko text-2xl text-gray-800 mb-3">Key Aspects:</h3>
+                <ul className="space-y-2 text-gray-700">
                   <li className="flex items-center">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
                     User Experience Enhancement
@@ -55,14 +57,14 @@ const Learning = () => {
           </div>
 
           {/* UX Design Section */}
-          <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg transform hover:scale-[1.02] transition-all">
+          <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg transform hover:scale-[1.02] transition-all border border-pastel-pink/30">
             <h2 className="text-3xl font-bold mb-6 text-purple-600">UX Design</h2>
             <div className="space-y-4">
               <p className="text-gray-700">UX design focuses on optimizing a product for effective and enjoyable use, encompassing all aspects of the user's interaction.</p>
               
-              <div className="bg-purple-50 p-6 rounded-xl">
-                <h3 className="font-semibold text-purple-800 mb-3">Key Benefits:</h3>
-                <ul className="space-y-2 text-purple-700">
+              <div className="bg-pastel-pink/20 p-6 rounded-xl">
+                <h3 className="font-teko text-2xl text-gray-800 mb-3">Key Benefits:</h3>
+                <ul className="space-y-2 text-gray-700">
                   <li className="flex items-center">
                     <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
                     Increased User Engagement
@@ -86,38 +88,38 @@ const Learning = () => {
         </div>
 
         {/* Core Principles Section */}
-        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg mb-12">
-          <h2 className="text-3xl font-bold mb-8 text-gray-800">Core Design Principles</h2>
+        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg mb-12 border border-pastel-mint/30">
+          <h2 className="text-4xl font-teko mb-8 text-gray-800">Core Design Principles (Or: How to Make Users Say "Wow")</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
                 title: "User-Centricity",
-                description: "Focus on creating products that solve specific user problems and meet user needs effectively.",
+                description: "Because nobody ever said 'Wow, this app really understands my existential crisis!'... until now.",
                 color: "blue"
               },
               {
                 title: "Consistency",
-                description: "Maintain uniformity in visuals and functionality across all platforms and products.",
+                description: "Like your favorite pair of socks - matching, reliable, and oddly comforting.",
                 color: "purple"
               },
               {
                 title: "Hierarchy",
-                description: "Organize information and visual elements to guide users efficiently through the product.",
+                description: "It's like Marie Kondo met Information Architecture - sparking joy, one click at a time.",
                 color: "pink"
               },
               {
                 title: "Accessibility",
-                description: "Ensure products are usable by everyone, including those with disabilities.",
+                description: "Because good design is like a good party - everyone's invited!",
                 color: "indigo"
               },
               {
                 title: "User Control",
-                description: "Give users the ability to manage their interactions and correct mistakes.",
+                description: "Like a time machine for your mistakes, but way more practical.",
                 color: "green"
               },
               {
                 title: "Feedback",
-                description: "Provide clear responses to user actions through visual cues or notifications.",
+                description: "We talk back, but in a good way - unlike your smart home device.",
                 color: "red"
               }
             ].map((principle, index) => (
@@ -133,16 +135,16 @@ const Learning = () => {
         </div>
 
         {/* Best Practices */}
-        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-gray-100">
-          <h2 className="text-3xl font-bold mb-6">Best Practices</h2>
+        <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-pastel-lavender/30">
+          <h2 className="text-4xl font-teko mb-6">Best Practices (AKA: The "Don't Make Users Cry" Guide)</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              "Keep designs simple and intuitive",
-              "Maintain consistent design patterns",
-              "Use clear visual hierarchy",
-              "Ensure responsive design",
-              "Optimize loading speed",
-              "Test with real users"
+              "Keep it simple - like explaining tech to your cat",
+              "Stay consistent - unlike your workout routine",
+              "Visual hierarchy - because chaos was so 2023",
+              "Responsive design - it's yoga for your website",
+              "Speed matters - faster than your coffee getting cold",
+              "Test with real humans - your mom doesn't count"
             ].map((practice, index) => (
               <div 
                 key={index}
@@ -158,8 +160,10 @@ const Learning = () => {
         </div>
 
         {/* Resources Section */}
-        <div className="mt-12 bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg">
-          <h2 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Additional Resources</h2>
+        <div className="mt-12 bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-pastel-mint/30">
+          <h2 className="text-4xl font-teko mb-6 bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent drop-shadow-lg">
+            Level Up Your Design Game
+          </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {[
               {

@@ -6,6 +6,20 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui'],
+        teko: ['Teko', 'sans-serif']
+      },
+      colors: {
+        pastel: {
+          blue: '#A8D8EA',
+          pink: '#FFCAD4',
+          mint: '#B4F8C8',
+          yellow: '#FBE5C8',
+          lavender: '#E7E0FF',
+          peach: '#FFE5D9'
+        }
+      },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-out',
         'slide-in': 'slideInRight 0.6s ease-out',

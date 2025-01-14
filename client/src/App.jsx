@@ -365,12 +365,14 @@ const Builder = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-pastel-blue via-pastel-lavender to-pastel-pink flex fade-in">
       {/* Left side - Chat */}
-      <div className="w-1/3 p-6 border-r border-gray-200 bg-white/90 backdrop-blur-sm overflow-y-auto shadow-lg">
-        <h1 className="text-3xl font-extrabold text-center mb-8 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Ctrl + Alt + Design
-          <span className="block text-sm font-medium text-gray-500 mt-2">AI-Powered Web Design Studio</span>
+      <div className="w-1/3 p-6 border-r border-pastel-blue bg-white/90 backdrop-blur-sm overflow-y-auto shadow-lg">
+        <h1 className="text-4xl font-teko text-center mb-8">
+          <span className="bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent drop-shadow-lg">
+            Ctrl + Alt + Design
+          </span>
+          <span className="block text-sm font-medium text-gray-700 mt-2">AI-Powered Web Design Studio</span>
         </h1>          {/* Template Selector */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
@@ -429,7 +431,7 @@ const Builder = () => {
                 }
               }}
               placeholder="Type your website description..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200 hover:bg-white"
+              className="flex-1 px-4 py-2 border border-pastel-blue rounded-lg focus:outline-none focus:ring-2 focus:ring-pastel-lavender bg-white/50 backdrop-blur-sm transition-all duration-200 hover:bg-white text-base"
               disabled={isLoading || isListening}
             />
             <label className="cursor-pointer">
@@ -457,7 +459,7 @@ const Builder = () => {
             <button
               onClick={handleTextSubmit}
               disabled={isLoading || isListening || !textInput.trim()}
-              className="px-4 py-2 text-white bg-green-500 hover:bg-green-600 rounded-lg font-semibold transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-gray-700 bg-pastel-mint hover:bg-pastel-yellow rounded-lg text-base font-medium transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               Send
             </button>
@@ -477,12 +479,12 @@ const Builder = () => {
               <button
                 onClick={startListening}
                 disabled={isLoading}
-                className={`w-full py-3 px-6 text-white rounded-lg text-lg font-semibold transition-all
+                className={`w-full py-3 px-6 text-gray-700 rounded-lg text-lg font-medium transition-all
                   ${isListening 
-                    ? 'bg-red-500 hover:bg-red-600' 
+                    ? 'bg-pastel-pink hover:bg-pastel-peach' 
                     : isLoading
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-blue-500 hover:bg-blue-600'
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-pastel-blue hover:bg-pastel-lavender'
                   }`}
               >
                 {isListening ? 'Listening...' 
@@ -516,14 +518,14 @@ const Builder = () => {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowCode(!showCode)}
-                  className="px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
+                  className="px-4 py-2 text-sm bg-gradient-to-r from-pastel-blue to-pastel-lavender text-gray-700 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 font-teko text-lg"
                 >
                   {showCode ? 'Hide Code' : 'View Code'}
                 </button>
                 {showCode && (
                   <button
                     onClick={() => setEditorTheme(theme => theme === 'custom-dark' ? 'custom-light' : 'custom-dark')}
-                    className="px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105"
+                    className="px-4 py-2 text-sm bg-gradient-to-r from-pastel-pink to-pastel-peach text-gray-700 rounded-lg transition-all duration-200 hover:shadow-md hover:scale-105 font-teko text-lg"
                   >
                     {editorTheme === 'custom-dark' ? '☀️ Light' : '🌙 Dark'}
                   </button>
@@ -539,7 +541,7 @@ const Builder = () => {
                   <div className="flex items-center gap-2 border-l pl-4">
                     <button
                       onClick={() => setPreviewMode('desktop')}
-                      className={`p-2 rounded ${previewMode === 'desktop' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`p-2 rounded ${previewMode === 'desktop' ? 'bg-pastel-blue/30 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}
                       title="Desktop View"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -548,7 +550,7 @@ const Builder = () => {
                     </button>
                     <button
                       onClick={() => setPreviewMode('tablet')}
-                      className={`p-2 rounded ${previewMode === 'tablet' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`p-2 rounded ${previewMode === 'tablet' ? 'bg-pastel-blue/30 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}
                       title="Tablet View"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -557,7 +559,7 @@ const Builder = () => {
                     </button>
                     <button
                       onClick={() => setPreviewMode('mobile')}
-                      className={`p-2 rounded ${previewMode === 'mobile' ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`p-2 rounded ${previewMode === 'mobile' ? 'bg-pastel-blue/30 text-gray-700' : 'text-gray-500 hover:text-gray-700'}`}
                       title="Mobile View"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -574,7 +576,7 @@ const Builder = () => {
                       window.open(url, '_blank');
                       URL.revokeObjectURL(url);
                     }}
-                    className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    className="px-3 py-1.5 text-lg font-teko bg-pastel-blue text-gray-700 rounded hover:bg-pastel-lavender transition-colors"
                   >
                     Open in New Tab
                   </button>
@@ -588,7 +590,7 @@ const Builder = () => {
                       a.click();
                       URL.revokeObjectURL(url);
                     }}
-                    className="px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                    className="px-3 py-1.5 text-lg font-teko bg-pastel-mint text-gray-700 rounded hover:bg-pastel-yellow transition-colors"
                   >
                     Download HTML
                   </button>
@@ -613,7 +615,6 @@ const Builder = () => {
                       id="preview-iframe"
                       srcDoc={generatedHtml}
                       className="w-full min-h-[800px] border-0 bg-white"
-                      sandbox="allow-scripts allow-same-origin allow-modals"
                       sandbox="allow-scripts allow-same-origin allow-modals"
                       onLoad={(e) => {
                         const doc = e.target.contentDocument;
