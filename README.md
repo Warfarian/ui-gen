@@ -1,5 +1,7 @@
 # Ctrl + Alt + Design
 
+[VOTE FOR ME](https://devpost.com/software/ctrl-alt-design)
+
 An AI-powered web development tool that transforms voice commands into beautiful, responsive websites.
 Speak, type, or imagine—our AI transforms your ideas into stunning, responsive UIs in seconds. From voice-guided creation to real-time rendering, design has never been this effortless.
 
